@@ -27,4 +27,5 @@ The project's uniqueness lies in its:
 - **Bluetooth LE/FTMS:** Integration for seamless connectivity with cycling hardware.
 - **Inclination Driving and Braking:** Simulated incline and braking functionalities for a realistic cycling feel.
 
-
+## Architecture 
+<picture><img src = "https://github.com/dilansenuruk/VR-Cycling-Final_Year_Project/blob/main/assets/Architecture.jpg"></picture>
