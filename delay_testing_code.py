@@ -1,9 +1,8 @@
 import asyncio
 import socket
 
-async def udp_send(client_socket, message, number_of_messages):
-    for i in range(1, number_of_messages + 1):
-            message = f"message{i}"
+async def udp_send(client_socket, message,i):
+    
     send_bytes = f"ndl:{i}:{message}:o".encode('ascii')
     client_socket.send(send_bytes)
 
@@ -40,9 +39,13 @@ async def udp_test():
         number_of_messages = 1000
         sent_sequence_numbers = set(range(1, number_of_messages + 1))
         received_sequence_numbers = set()
+
+        for i in range(1, number_of_messages + 1):
+            message = f"message{i}"
+            await udp_send(client,message,i)
        
-        received_string = await udp_receive(client)
-        received_sequence_numbers.add(int(received_string.split(":")[1]))
+            received_string = await udp_receive(client)
+            received_sequence_numbers.add(int(received_string.split(":")[1]))
 
         lost_packets = sent_sequence_numbers - received_sequence_numbers
         if lost_packets:
