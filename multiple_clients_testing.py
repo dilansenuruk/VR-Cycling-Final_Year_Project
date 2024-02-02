@@ -16,6 +16,10 @@ async def udp_receive(client_socket, client_sequence_numbers):
         print("Message received from the server\n" + received_string)
 
         parts = received_string.split(":")
+        if len(parts) < 4:
+            print(f"Invalid message format: {received_string}")
+            continue
+
         client_id, seq_num, message, message_type = parts[0], int(parts[1]), parts[2], parts[3]
 
         if message_type == "return":
@@ -25,14 +29,7 @@ async def udp_receive(client_socket, client_sequence_numbers):
             return_message = f"{client_id}:{seq_num}:{message}:return"
             await udp_send(client_socket, return_message, seq_num, client_id, "return")
 
-async def udp_disconnect(client_socket):
-    send_bytes = "0:0:disconnect:original".encode('ascii')
-    client_socket.send(send_bytes)
 
-async def get_user_input():
-    loop = asyncio.get_event_loop()
-    user_input = await loop.run_in_executor(None, input, "Enter 'disconnect' to disconnect: ")
-    return user_input.strip()
 
 async def udp_test(client_id, server_address):
     client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -70,11 +67,11 @@ async def udp_test(client_id, server_address):
         for seq_num in client_sequence_numbers[client_id]:
             print(f"Message {seq_num} - Round trip delay: {seq_num * 0.001} seconds")
 
-        await udp_disconnect(client)
+        
 
     except KeyboardInterrupt:
         print("KeyboardInterrupt received. Disconnecting...")
-        await udp_disconnect(client)
+        
     except Exception as e:
         print("Exception thrown: ", str(e))
     finally:
