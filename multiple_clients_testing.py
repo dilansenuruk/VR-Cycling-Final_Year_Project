@@ -5,8 +5,8 @@ async def udp_send(client_socket, message, seq_num, client_id, message_type):
     send_bytes = f"{client_id}:{seq_num}:{message}:{message_type}".encode('ascii')
     client_socket.send(send_bytes)
 
-async def udp_client_ready(client_socket):
-    send_bytes = "0:0:ready:original".encode('ascii')
+async def udp_client_ready(client_socket,client_id):
+    send_bytes = f"0:{client_id}:ready:original".encode('ascii')
     client_socket.send(send_bytes)
 
 async def udp_receive(client_socket, client_sequence_numbers):
@@ -20,14 +20,15 @@ async def udp_receive(client_socket, client_sequence_numbers):
             print(f"Invalid message format: {received_string}")
             continue
 
-        client_id, seq_num, message, message_type = parts[0], int(parts[1]), parts[2], parts[3]
+        rec_client_id, rec_seq_num, rec_message, rec_message_type = parts[0], int(parts[1]), parts[2], parts[3]
 
-        if message_type == "return":
-            print(f"Received return message from {client_id}, seq_num: {seq_num}")
+        if rec_message_type == "return":
+            print(f"Received return message from {rec_client_id}, seq_num: {rec_seq_num}")
+        elif rec_client_id == client_id:
+            print('done')
         else:
-            client_sequence_numbers[client_id].add(seq_num)
-            return_message = f"{client_id}:{seq_num}:{message}:return"
-            await udp_send(client_socket, return_message, seq_num, client_id, "return")
+            client_sequence_numbers[rec_client_id].add(rec_seq_num)
+            await udp_send(client_socket, rec_message, rec_seq_num, rec_client_id, "return")
 
 
 
@@ -39,7 +40,7 @@ async def udp_test(client_id, server_address):
         # Connect to the server
         server_ip, server_port = server_address
         client.connect((server_ip, server_port))
-        await udp_client_ready(client)
+        '''await udp_client_ready(client)'''
 
         number_of_messages = 1000
         sent_sequence_numbers = set(range(1, number_of_messages + 1))
@@ -61,7 +62,7 @@ async def udp_test(client_id, server_address):
         else:
             print("No packets lost.")
 
-        await asyncio.sleep(1)  # Allow some time for return messages to arrive
+        await asyncio.sleep(1)  # Allow some time for retundrn messages to arrive
 
         print("Round trip delay measurements:")
         for seq_num in client_sequence_numbers[client_id]:
