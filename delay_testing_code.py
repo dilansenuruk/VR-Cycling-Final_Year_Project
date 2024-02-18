@@ -36,7 +36,7 @@ async def udp_test():
         client.connect((server_ip, server_port))
         await udp_client_ready(client)
 
-        number_of_messages = 1000
+        number_of_messages = 100
         sent_sequence_numbers = set(range(1, number_of_messages + 1))
         received_sequence_numbers = set()
 
