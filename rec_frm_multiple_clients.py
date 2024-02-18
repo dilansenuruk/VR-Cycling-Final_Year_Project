@@ -62,7 +62,7 @@ async def main():
 
         if rec_own == number_of_messages:
             for client_id, count in received_counts.items():
-                print("rec", received_sequence_numbers)
+                #print("rec", received_sequence_numbers)
                 expected_sequence_numbers = set(range(1, number_of_messages + 1))
                 lost_packets = expected_sequence_numbers - received_sequence_numbers
                 if lost_packets:
