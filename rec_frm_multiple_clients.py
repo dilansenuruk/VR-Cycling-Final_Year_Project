@@ -1,14 +1,11 @@
 import asyncio
 import socket
-import time
 
-async def udp_send(client_socket, i, timestamps):
+async def udp_send(client_socket, i):
     send_bytes = f"ndl:{i}:msg:o".encode('ascii')
     client_socket.send(send_bytes)
-    timestamps[i] = time.time()
-    #print(timestamps)
 
-async def udp_receive(client_socket, client_id, received_counts, received_sequence_numbers, timestamps, delays):
+async def udp_receive(client_socket, client_id, received_counts, received_sequence_numbers):
     global rec_own
     receive_bytes, _ = client_socket.recvfrom(1024)
     received_string = receive_bytes.decode('ascii')
@@ -22,12 +19,6 @@ async def udp_receive(client_socket, client_id, received_counts, received_sequen
         if rec_client_id == client_id:
             received_counts[rec_client_id] = received_counts.get(rec_client_id, 0) + 1
             rec_own += 1
-            
-            sent_time = timestamps.get(rec_seq_num, 0)
-            if sent_time != 0:
-                delay = time.time() - sent_time
-                print(f"Delay in receiving own message {rec_seq_num}: {delay} seconds")
-                delays.append(delay)
         else:
             received_counts[rec_client_id] = received_counts.get(rec_client_id, 0) + 1
 
@@ -41,13 +32,11 @@ async def main():
     server_port = 5500
     client.bind(('0.0.0.0', 5400))
     client_id = "ndl"
-    number_of_messages = 10
+    number_of_messages = 100
     received_counts = {}  # Dictionary to store received message counts for each client
     received_sequence_numbers = set(range(1, number_of_messages + 1))
     global rec_own
     rec_own = 0
-    timestamps = {}
-    delays = []
     check = True
     
 
@@ -63,14 +52,14 @@ async def main():
     await udp_client_ready(client)
     
     for i in range(1,number_of_messages+1):
-        await asyncio.gather(udp_send(client, i, timestamps), udp_receive(client, client_id, received_counts, received_sequence_numbers, timestamps, delays))  
+        await asyncio.gather(udp_send(client, i), udp_receive(client, client_id, received_counts, received_sequence_numbers))  
         await asyncio.sleep(0.1)
     
     # Check for lost packets for each client
     while check:
-        #print("in while")
-          # 5 seconds timeout, adjust as needed
-        #print(rec_own)
+        print("in while")
+        await udp_receive(client, client_id, received_counts, received_sequence_numbers)  # 5 seconds timeout, adjust as needed
+        print(rec_own)
 
         if rec_own == number_of_messages:
             check = False
@@ -84,15 +73,7 @@ async def main():
                         print(f"Message {lost_packet} from client {client_id} has been lost.")
                 else:
                     print(f"Client {client_id}: No packets lost.")
-            #break
-        else:
-            await udp_receive(client, client_id, received_counts, received_sequence_numbers, timestamps, delays)
-
-    
-    if delays:
-        average_delay = (sum(delays) / len(delays))*1000
-        print(f"Average delay in receiving own messages: {average_delay} miliseconds")
-    #await udp_receive(client, client_id, received_counts, received_sequence_numbers, timestamps, delays)
+            break
 
 if __name__ == "__main__":
     asyncio.run(main())
