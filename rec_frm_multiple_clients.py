@@ -28,7 +28,7 @@ async def udp_client_ready(client_socket):
 
 async def main():
     client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server_ip = "35.154.53.245"
+    server_ip = "13.233.195.226"
     server_port = 5500
     client.bind(('0.0.0.0', 5400))
     client_id = "ndl"
@@ -37,6 +37,7 @@ async def main():
     received_sequence_numbers = set(range(1, number_of_messages + 1))
     global rec_own
     rec_own = 0
+    check = True
     
 
     try:
@@ -55,14 +56,15 @@ async def main():
         await asyncio.sleep(0.1)
     
     # Check for lost packets for each client
-    while True:
+    while check:
         print("in while")
-        #await udp_receive(client, client_id, received_counts, received_sequence_numbers)  # 5 seconds timeout, adjust as needed
+        await udp_receive(client, client_id, received_counts, received_sequence_numbers)  # 5 seconds timeout, adjust as needed
         print(rec_own)
 
         if rec_own == number_of_messages:
+            check = False
             for client_id, count in received_counts.items():
-                #print("rec", received_sequence_numbers)
+                print(received_counts)
                 expected_sequence_numbers = set(range(1, number_of_messages + 1))
                 lost_packets = expected_sequence_numbers - received_sequence_numbers
                 if lost_packets:
