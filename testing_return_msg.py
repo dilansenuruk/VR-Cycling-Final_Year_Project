@@ -11,7 +11,7 @@ async def udp_send_back(client_socket, send_message):
     send_bytes = send_message.encode('ascii')
     client_socket.send(send_bytes)
 
-async def udp_receive(client_socket, client_id, received_counts, received_sequence_numbers, timestamps, delays, return_counts, return_timestamps):
+async def udp_receive(client_socket, client_id, received_counts, received_sequence_numbers, timestamps, delays, return_counts, return_timestamps, return_delays):
     global rec_own
     global client
     receive_bytes, _ = client_socket.recvfrom(1024)
@@ -42,7 +42,7 @@ async def udp_receive(client_socket, client_id, received_counts, received_sequen
                 if sent_time != 0:
                     delay = time.time() - sent_time
                     print(f"Delay in receiving own message {rec_seq_num}: {delay} seconds")
-                    delays.append(delay)
+                    return_delays.append(delay)
         else:
             received_counts[rec_client_id] = received_counts.get(rec_client_id, 0) + 1
             if rec_message_type == "o":
@@ -69,6 +69,7 @@ async def main():
     timestamps = {}
     return_timestamps = {}
     delays = []
+    return_delays = []
     check = True
     
 
@@ -84,7 +85,7 @@ async def main():
     await udp_client_ready(client)
     
     for i in range(1,number_of_messages+1):
-        await asyncio.gather(udp_send(client, i, timestamps), udp_receive(client, client_id, received_counts, received_sequence_numbers, timestamps, delays, return_counts, return_timestamps))  
+        await asyncio.gather(udp_send(client, i, timestamps), udp_receive(client, client_id, received_counts, received_sequence_numbers, timestamps, delays, return_counts, return_timestamps, return_delays))  
         await asyncio.sleep(0.1)
     
     # Check for lost packets for each client
@@ -103,12 +104,15 @@ async def main():
                     print(f"Client {client_id}: No packets lost.")
             break
         else:
-            await udp_receive(client, client_id, received_counts, received_sequence_numbers, timestamps, delays, return_counts, return_timestamps)
+            await udp_receive(client, client_id, received_counts, received_sequence_numbers, timestamps, delays, return_counts, return_timestamps, return_delays)
 
     if delays:
         average_delay = (sum(delays) / len(delays)) * 1000
         print(f"Average delay in receiving own messages: {average_delay} milliseconds")
     
+    if return_delays:
+        average_return_delay = (sum(return_delays) / len(return_delays)) * 1000
+        print(f"Average return delay in receiving own messages: {average_return_delay} milliseconds")
     if return_counts:
         return_packets = sum(return_counts.values())
         print(f"Packet loss in returning messages: {number_of_messages - return_packets}/{number_of_messages}")
