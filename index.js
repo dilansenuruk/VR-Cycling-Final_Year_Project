@@ -23,6 +23,7 @@ server.on('message', (message, senderInfo) => {
         const clientExists = clients.some(client => 
             client.address === senderInfo.address && client.port === senderInfo.port
         );
+        console.log(clients);
 
         if (!clientExists) {
             // If the client is not in the list, add information about the client
@@ -67,7 +68,7 @@ function broadcast(message, senderInfo) {
                 }
             });
         } else {
-            server.send('discard', senderInfo.port, senderInfo.address, () =>{
+            server.send(message, senderInfo.port, senderInfo.address, () =>{
                 console.log(`Discard message sent to ${senderInfo.address}:${senderInfo.port}`);
             })
         }
