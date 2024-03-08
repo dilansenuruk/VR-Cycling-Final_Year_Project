@@ -31,11 +31,11 @@ async def udp_client_ready(client_socket):
 
 async def main():
     client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server_ip = "43.205.203.197"
+    server_ip = "15.206.74.115"
     server_port = 5500
     client.bind(('0.0.0.0', 5400))
     client_id = "ndl"
-    number_of_messages = 5
+    number_of_messages = 5000
     received_counts = {}  # Dictionary to store received message counts for each client
     received_sequence_numbers = {}
     global rec_own
@@ -56,7 +56,7 @@ async def main():
     
     for i in range(1,number_of_messages+1):
         await asyncio.gather(udp_send(client, i), udp_receive(client, client_id, received_counts, received_sequence_numbers))  
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.1)
     
     # Check for lost packets for each client
     while check:
