@@ -2,6 +2,7 @@ import asyncio
 import socket
 import time
 import matplotlib.pyplot as plt
+import statistics
 
 async def udp_send(client_socket, i, timestamps):
     send_bytes = f"ndl:{i}:msg:o".encode('ascii')
@@ -79,7 +80,7 @@ async def main():
     client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server_ip = "3.109.133.185"
     server_port = 5500
-    client.bind(('0.0.0.0', 5400))
+    client.bind(('0.0.0.0', 5800))
     client_id = "ndl"
     number_of_messages = 1000
     received_counts = {}  # Dictionary to store received message counts for each client
@@ -167,7 +168,21 @@ async def main():
         plt.title('Histogram of Delays')
         plt.grid(True)
         plt.show()
-        
+        mean_delay = statistics.mean(delays_ms)
+        median_delay = statistics.median(delays_ms)
+        std_delay = statistics.stdev(delays_ms)
+        var_delay = statistics.variance(delays_ms)
+        #skewness = statistics.skew(delays_ms)
+        #kurtosis = statistics.kurtosis(delays_ms)
+
+        #print(f"Skewness of Delay: {skewness}")
+        #print(f"Kurtosis of Delay: {kurtosis}")
+
+        print(f"Standard Deviation of Delay: {std_delay} milliseconds")
+        print(f"Variance of Delay: {var_delay} milliseconds^2")
+
+        print(f"Mean Delay: {mean_delay} milliseconds")
+        print(f"Median Delay: {median_delay} milliseconds")
     if return_delays:
         average_return_delay = (sum(return_delays) / (2*len(return_delays))) * 1000
         print(f"Average return delay in receiving own messages: {average_return_delay} milliseconds")
@@ -175,6 +190,6 @@ async def main():
         return_packets = sum(return_counts.values())
         print(f"Packet loss in returning messages: {number_of_messages - return_packets}/{number_of_messages}")'''
     print(received_counts[client_id])
-    print(lost)
+    print("lost packets", lost)
 if __name__ == "__main__":
     asyncio.run(main())
