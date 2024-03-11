@@ -31,7 +31,7 @@ async def udp_client_ready(client_socket):
 
 async def main():
     client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server_ip = "15.206.74.115"
+    server_ip = "65.2.140.28"
     server_port = 5500
     client.bind(('0.0.0.0', 5400))
     client_id = "ndl"

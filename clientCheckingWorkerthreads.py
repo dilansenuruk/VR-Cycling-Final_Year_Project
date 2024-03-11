@@ -19,7 +19,9 @@ async def udp_receive(client_socket, client_id, received_counts, received_sequen
     received_string = receive_bytes.decode('ascii')
     
     print("Message received from the server " + received_string)
-    if received_string != "ready" and received_string != "ack":
+    if received_string == "Start":
+        startMessagereceived == True
+    if received_string != "ready" and received_string != "ack" and received_string !="create a game room" and received_string !="Start" and received_string !="ha ha":
         parts = received_string.split(":")
         rec_client_id, rec_seq_num, rec_message, rec_message_type = parts[0], int(parts[1]), parts[2], parts[3]
         
@@ -73,8 +75,14 @@ async def udp_client_ready(client_socket):
     send_bytes = "ready".encode('ascii')
     client_socket.send(send_bytes)
 
+async def udp_client_gameroom(client_socket):
+    send_bytes = "create a game room".encode('ascii')
+    client_socket.send(send_bytes)
+    print("gameroom created")
+
 async def main():
     global client
+    global startMessagereceived
     client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server_ip = "65.2.140.28"
     server_port = 5500
@@ -93,6 +101,7 @@ async def main():
     check = True
     check_in = True
     lost = []
+    startMessagereceived = False
     
 
     try:
@@ -103,33 +112,43 @@ async def main():
         print("KeyboardInterrupt received. Disconnecting...")
     except Exception as e:
         print("Exception thrown: ", str(e))
+    
+    await udp_client_gameroom(client)
+    await asyncio.sleep(1)
 
     await udp_client_ready(client)
     await asyncio.sleep(0.1)
 
-    
-    for i in range(1,number_of_messages+1):
-        await asyncio.gather(udp_send(client, i, timestamps), udp_receive(client, client_id, received_counts, received_sequence_numbers, timestamps, delays, return_counts, return_timestamps, return_delays))
-        while check_in:
-            print("in", rec_own, i)
-            
-            if rec_own < i:
-                #print("in")
-                time_in = time.time() 
-                #print(time_in, timestamps[i])
-                if (time_in-timestamps[i]) > 5:
-                    print((time_in-timestamps[i]))
-                    print(i ,"packet loss")
-                    lost.append(i)
-                    rec_own += 1
-                    check_in = False
-                await udp_receive(client, client_id, received_counts, received_sequence_numbers, timestamps, delays, return_counts, return_timestamps, return_delays)
+    #await udp_receive(client, client_id, received_counts, received_sequence_numbers, timestamps, delays, return_counts, return_timestamps, return_delays)
 
-            else:
-                check_in = False
-        check_in = True
-        await asyncio.sleep(0.1)
-    
+    if startMessagereceived:
+        print("Start received")
+        for i in range(1,number_of_messages+1):
+            await asyncio.gather(udp_send(client, i, timestamps), udp_receive(client, client_id, received_counts, received_sequence_numbers, timestamps, delays, return_counts, return_timestamps, return_delays))
+            while check_in:
+                print("in", rec_own, i)
+                
+                if rec_own < i:
+                    #print("in")
+                    time_in = time.time() 
+                    #print(time_in, timestamps[i])
+                    if (time_in-timestamps[i]) > 5:
+                        print((time_in-timestamps[i]))
+                        print(i ,"packet loss")
+                        lost.append(i)
+                        rec_own += 1
+                        check_in = False
+                    await udp_receive(client, client_id, received_counts, received_sequence_numbers, timestamps, delays, return_counts, return_timestamps, return_delays)
+
+                else:
+                    check_in = False
+            check_in = True
+            await asyncio.sleep(0.1)
+    else: 
+        print("waiting")
+
+        #await udp_receive(client, client_id, received_counts, received_sequence_numbers, timestamps, delays, return_counts, return_timestamps, return_delays)
+
     # Check for lost packets for each client
     while check:
         if rec_own == number_of_messages:
@@ -146,6 +165,7 @@ async def main():
                     print(f"Client {client_id}: No packets lost.")
             break
         else:
+            print("in while")
             await udp_receive(client, client_id, received_counts, received_sequence_numbers, timestamps, delays, return_counts, return_timestamps, return_delays)
     '''print("return_counts", return_counts)
     print("delays",delays)

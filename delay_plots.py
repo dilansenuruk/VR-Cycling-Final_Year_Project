@@ -1,6 +1,7 @@
 import asyncio
 import socket
 import time
+import matplotlib.pyplot as plt
 
 async def udp_send(client_socket, i, timestamps):
     send_bytes = f"ndl:{i}:msg:o".encode('ascii')
@@ -155,7 +156,18 @@ async def main():
     if delays:
         average_delay = (sum(delays) / len(delays)) * 1000
         print(f"Average delay in receiving own messages: {average_delay} milliseconds")
-    
+    if delays:
+        # Convert delays from seconds to milliseconds
+        delays_ms = [delay * 1000 for delay in delays]
+
+        # Plot histogram
+        plt.hist(delays_ms, bins=50, alpha=0.7, color='blue', edgecolor='black')
+        plt.xlabel('Delay (milliseconds)')
+        plt.ylabel('Number of Packets')
+        plt.title('Histogram of Delays')
+        plt.grid(True)
+        plt.show()
+        
     if return_delays:
         average_return_delay = (sum(return_delays) / (2*len(return_delays))) * 1000
         print(f"Average return delay in receiving own messages: {average_return_delay} milliseconds")
