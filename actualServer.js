@@ -2,7 +2,8 @@ const { error } = require('console');
 const dgram = require('dgram');
 const server = dgram.createSocket('udp4');
 
-const clients = [];
+const clientsOculus = [];
+const clientsRasp = [];
 let startMessageSent = false;
 
 server.on('error', (error) => {
@@ -31,31 +32,60 @@ server.on('message', (message, senderInfo) => {
         }, 8000);
     }
 
-    else if (messageString === 'ready') {
+    else if (messageString.endsWith(':ready')) {
         // Check if the client's address is already in the list
-        const clientExists = clients.some(client => 
-            client.address === senderInfo.address && client.port === senderInfo.port
-        );
-
-        if (!clientExists) {
-            // If the client is not in the list, add information about the client
-            clients.push({
-                address: senderInfo.address,
-                port: senderInfo.port
-            });
-
-            console.log("Updated clients array:", clients);
-            console.log(`Client at ${senderInfo.address}:${senderInfo.port} is ready.`);
-            
-            // Send an acknowledgment back to the client
-            server.send('ack', senderInfo.port, senderInfo.address, () => {
-                console.log(`Acknowledgment sent to ${senderInfo.address}:${senderInfo.port}`);
-            });
-            
-        } else {
-            console.log(`Client at ${senderInfo.address}:${senderInfo.port} is already in the list.`);
-            server.send('ha ha', senderInfo.port, senderInfo.address)
+        if (messageString.startsWith('O')){
+            const clientOculusExists = clientsOculus.some(client => 
+                client.address === senderInfo.address && client.port === senderInfo.port
+            );
+    
+            if (!clientOculusExists) {
+                // If the client is not in the list, add information about the client
+                clientsOculus.push({
+                    address: senderInfo.address,
+                    port: senderInfo.port
+                });
+    
+                console.log("Updated clients array:", clientsOculus);
+                console.log(`Oculus Client at ${senderInfo.address}:${senderInfo.port} is ready.`);
+                
+                // Send an acknowledgment back to the client
+                server.send('ack', senderInfo.port, senderInfo.address, () => {
+                    console.log(`Acknowledgment sent to oculus ${senderInfo.address}:${senderInfo.port}`);
+                });
+                
+            } else {
+                console.log(`Oculus Client at ${senderInfo.address}:${senderInfo.port} is already in the list.`);
+                //server.send('ha ha', senderInfo.port, senderInfo.address)
+            }
         }
+        
+        if (messageString.startsWith('R')){
+            const clientRaspExists = clientsRasp.some(client => 
+                client.address === senderInfo.address && client.port === senderInfo.port
+            );
+    
+            if (!clientRaspExists) {
+                // If the client is not in the list, add information about the client
+                clientsRasp.push({
+                    address: senderInfo.address,
+                    port: senderInfo.port
+                });
+    
+                console.log("Updated clients array:", clientsRasp);
+                console.log(`Rasp Client at ${senderInfo.address}:${senderInfo.port} is ready.`);
+                
+                // Send an acknowledgment back to the client
+                server.send('ack', senderInfo.port, senderInfo.address, () => {
+                    console.log(`Acknowledgment sent to rasp ${senderInfo.address}:${senderInfo.port}`);
+                });
+                
+            } else {
+                console.log(`Rasp Client at ${senderInfo.address}:${senderInfo.port} is already in the list.`);
+                //server.send('ha ha', senderInfo.port, senderInfo.address)
+            }
+        }
+        
     } else if(messageString === 'disconnect'){
         const index = clients.findIndex(client => client.address === senderInfo.address && client.port === senderInfo.port);
         if (index !== -1) {
@@ -64,16 +94,26 @@ server.on('message', (message, senderInfo) => {
         }
     }
     else {
-        console.log(`Message received from ${senderInfo.address}:${senderInfo.port}: ${messageString}`);
+        
         if (startMessageSent && checkAllClientsConnected()) {
+            const [messageType, playerName, sequenceNum, charOne, charTwo] = messageString.split(":");
+            if (messageType === 'O'){
+                broadcast(message)
+                //send message to the client with same playerName but messageType is "R"
+            }
+            if (messageType === 'R'){
+                //send message to the client with same playerName but messageType is "O"
+            }
+
+            console.log(`Message received from ${senderInfo.address}:${senderInfo.port}: ${messageString}`);
             //broadcasting messages
-            broadcast(message)
+            //broadcast(message)
         }
     }
 });
 
 function broadcast(message) {
-    clients.forEach((client) => {
+    clientsOculus.forEach((client) => {
         server.send(message, client.port, client.address, (error) => {
             if (error) {
                 console.error(`Error broadcasting to ${client.address}:${client.port}: ${error.message}`);
@@ -85,7 +125,7 @@ function broadcast(message) {
 }
 
 function checkAllClientsConnected() {
-    return clients.length >= 1;
+    return clientsOculus.length >= 1;
 }
 
 server.bind(5500);
