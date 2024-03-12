@@ -34,6 +34,7 @@ server.on('message', (message, senderInfo) => {
 
     else if (messageString.endsWith(':ready')) {
         // Check if the client's address is already in the list
+        const playerName = messageString.split(":")[1]
         if (messageString.startsWith('O')){
             const clientOculusExists = clientsOculus.some(client => 
                 client.address === senderInfo.address && client.port === senderInfo.port
@@ -42,6 +43,7 @@ server.on('message', (message, senderInfo) => {
             if (!clientOculusExists) {
                 // If the client is not in the list, add information about the client
                 clientsOculus.push({
+                    playerName: playerName,
                     address: senderInfo.address,
                     port: senderInfo.port
                 });
@@ -68,6 +70,7 @@ server.on('message', (message, senderInfo) => {
             if (!clientRaspExists) {
                 // If the client is not in the list, add information about the client
                 clientsRasp.push({
+                    playerName: playerName,
                     address: senderInfo.address,
                     port: senderInfo.port
                 });
@@ -85,12 +88,17 @@ server.on('message', (message, senderInfo) => {
                 //server.send('ha ha', senderInfo.port, senderInfo.address)
             }
         }
-        
-    } else if(messageString === 'disconnect'){
-        const index = clients.findIndex(client => client.address === senderInfo.address && client.port === senderInfo.port);
-        if (index !== -1) {
-            clients.splice(index, 1);
-            console.log(`Client at ${senderInfo.address}:${senderInfo.port} disconnected.`);
+    } 
+    else if (messageString === 'disconnect') {
+        const indexOculus = clientsOculus.findIndex(client => client.address === senderInfo.address && client.port === senderInfo.port);
+        const indexRasp = clientsRasp.findIndex(client => client.address === senderInfo.address && client.port === senderInfo.port);
+
+        if (indexOculus !== -1) {
+            clientsOculus.splice(indexOculus, 1);
+            console.log(`Oculus Client at ${senderInfo.address}:${senderInfo.port} disconnected.`);
+        } else if (indexRasp !== -1) {
+            clientsRasp.splice(indexRasp, 1);
+            console.log(`Rasp Client at ${senderInfo.address}:${senderInfo.port} disconnected.`);
         }
     }
     else {
@@ -100,9 +108,35 @@ server.on('message', (message, senderInfo) => {
             if (messageType === 'O'){
                 broadcast(message)
                 //send message to the client with same playerName but messageType is "R"
+                const matchingRaspClient = clientsRasp.find(client => client.playerName === playerName);
+                if (matchingRaspClient) {
+                    // Send the message to the matching Rasp client
+                    server.send(message, matchingRaspClient.port, matchingRaspClient.address, (error) => {
+                        if (error) {
+                            console.error(`Error sending message to Rasp client ${matchingRaspClient.address}:${matchingRaspClient.port}: ${error.message}`);
+                        } else {
+                            console.log(`Message sent to Rasp client ${matchingRaspClient.address}:${matchingRaspClient.port}`);
+                        }
+                    });
+                } else {
+                    console.log(`No matching Rasp client found for ${playerName}`);
+                }
             }
-            if (messageType === 'R'){
+            else if (messageType === 'R'){
                 //send message to the client with same playerName but messageType is "O"
+                const matchingOculusClient = clientsOculus.find(client => client.playerName === playerName);
+                if (matchingOculusClient) {
+                    // Send the message to the matching Oculus client
+                    server.send(message, matchingOculusClient.port, matchingOculusClient.address, (error) => {
+                        if (error) {
+                            console.error(`Error sending message to Oculus client ${matchingOculusClient.address}:${matchingOculusClient.port}: ${error.message}`);
+                        } else {
+                            console.log(`Message sent to Oculus client ${matchingOculusClient.address}:${matchingOculusClient.port}`);
+                        }
+                    });
+                } else {
+                    console.log(`No matching Oculus client found for ${playerName}`);
+                }
             }
 
             console.log(`Message received from ${senderInfo.address}:${senderInfo.port}: ${messageString}`);
