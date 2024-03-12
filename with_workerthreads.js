@@ -85,7 +85,7 @@ server.on('message', (message, senderInfo) => {
 });
 
 function checkAllClientsConnected() {
-    return clients.length >= 2;
+    return clients.length >= 1;
 }
 
 server.bind(5500);
