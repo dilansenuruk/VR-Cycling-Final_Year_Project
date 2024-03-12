@@ -1,4 +1,4 @@
-const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
+const { error } = require('console');
 const dgram = require('dgram');
 const server = dgram.createSocket('udp4');
 
@@ -65,23 +65,7 @@ server.on('message', (message, senderInfo) => {
         console.log(`Message received from ${senderInfo.address}:${senderInfo.port}: ${messageString}`);
         if (startMessageSent && checkAllClientsConnected()) {
             // Start broadcasting messages in a separate Worker Thread
-            const broadcastWorker = new Worker('./broadcastWorker.js', {
-                workerData: { message: Buffer.from(message), senderInfo, clients }
-            });
-
-            broadcastWorker.on('message', (result) => {
-                console.log(`Broadcasting completed: ${result}`);
-            });
-
-            broadcastWorker.on('error', (error) => {
-                console.error('Broadcasting error:', error);
-            });
-
-            broadcastWorker.on('exit', (code) => {
-                if (code !== 0) {
-                    console.error(`Broadcasting worker stopped with exit code ${code}`);
-                }
-            });
+            broadcast(message)
         }
     }
 });
