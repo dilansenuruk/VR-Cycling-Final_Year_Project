@@ -15,8 +15,6 @@ prev_resistance = 0
 total_time = 0
 count = 0
 seq_num = 1
-
-resistance_time = None
 resistance_time = None
 
 res_dic = {'1': 0.5 , '20': 5 , '52': 0.5 , '54': -4, '73': 1.4  , '84': -1.3 , '90': -5, '93': 3.3,
@@ -68,6 +66,7 @@ async def run(address):
             global client_type
             global id_name
             global seq_num
+            global seq_numOculus
             eps = 1e-10
             speed = data[0]
             power = data[6]
@@ -85,7 +84,7 @@ async def run(address):
             udp_send(client_udp, message, name)
             receiving_string = udp_receive(client_udp)
             print(receiving_string)
-            client_type, id_name, resistance_time = receiving_string.split(":")
+            client_type, id_name, seq_numOculus, resistance, resistance_time = receiving_string.split(":")
         
                      
 
@@ -105,8 +104,8 @@ async def run(address):
 
 
             client_udp.connect((server_ip, server_port))
-            udp_client_ready(client_udp,name)
-            startMsg = udp_receive(client_udp)
+            await udp_client_ready(client_udp,name)
+            startMsg = await udp_receive(client_udp)
 
             #check if start message received
             if (startMsg == "Start"):     
@@ -121,7 +120,7 @@ async def run(address):
                 
                 await ftms.request_control()
                 
-                prev_resistance = 0
+                #prev_resistance = 0
                 for i in range(10):
                     speed_data.append(['start', t_start, speed])
                     #print(resistance_time)
