@@ -14,6 +14,7 @@ t_start = 0
 prev_resistance = 0
 total_time = 0
 count = 0
+seq_num = 1
 
 resistance_time = None
 resistance_time = None
@@ -32,10 +33,8 @@ async def run(address):
         server_port = 5500
         client_udp.bind(('0.0.0.0', 5400))
         name = "ndl"
-        
-
-
-        #change on_message
+   
+       #change on_message
         '''def on_message(client, userdata, msg):
             global resistance_time
             global received_message_topic2
@@ -51,7 +50,7 @@ async def run(address):
             client_socket.send(send_bytes)
 
         def udp_client_ready(client_socket,id):
-            send_bytes = f"r:ready:{id}".encode('ascii')
+            send_bytes = f"R:{id}:ready".encode('ascii')
             client_socket.send(send_bytes)
 
         def udp_receive(client_socket):
@@ -68,25 +67,26 @@ async def run(address):
             global resistance_time
             global client_type
             global id_name
+            global seq_num
             eps = 1e-10
             speed = data[0]
             power = data[6]
             distance = data[4]
             resistance = power/(speed + eps)
+            
             #print(datetime.now(), "Speed:", data[0], "Distance:", data[4], "Power:", data[6], "Resistance:", resistance)
             #print("Time when speed data came:", t_start, 'speed =', speed)
             #client_mqtt.publish("VRcycling/UserA/Speed", str(data[0])) #publish
             #client_mqtt.publish("VRcycling/UserA/Distance", str(data[4])) #publish
 
-            message = f"{speed}:{distance}"
+            message = f"{seq_num}:{speed}:{distance}"
+            seq_num += 1
             t_start = time.time()
             udp_send(client_udp, message, name)
             receiving_string = udp_receive(client_udp)
             print(receiving_string)
-            data_packet = receiving_string.split(":")
-            client_type = data_packet[0]
-            id_name = data_packet[1]
-            resistance_time = data_packet[2]        
+            client_type, id_name, resistance_time = receiving_string.split(":")
+        
                      
 
             '''client_mqtt.subscribe("VRcycling/UserA/IncTime") #subscribe
@@ -105,45 +105,51 @@ async def run(address):
 
 
             client_udp.connect((server_ip, server_port))
-            ftms = FitnessMachineService(client)
-            ftms.set_indoor_bike_data_handler(my_measurement_handler)
-            #print("message is", message)
             udp_client_ready(client_udp,name)
-            await ftms.enable_indoor_bike_data_notify()
-            ftms.set_control_point_response_handler(print_control_point_response)
-            await ftms.enable_control_point_indicate()
-            
-            await ftms.request_control()
-            
-            prev_resistance = 0
-            for i in range(10):
-                speed_data.append(['start', t_start, speed])
-                #print(resistance_time)
-                new_resistance = 0 #change
-                if ((resistance_time in res_dic.keys()) and (prev_resistance != resistance_time)):
-                    prev_resistance = resistance_time
-                    new_resistance = res_dic[resistance_time] + resistance
-                    #print(new_resistance)
-                    if new_resistance >= 0:
-                        await ftms.set_target_power(speed*(new_resistance))
-                        #print(speed*(new_resistance))
+            startMsg = udp_receive(client_udp)
+
+            #check if start message received
+            if (startMsg == "Start"):     
+
+                ftms = FitnessMachineService(client)
+                ftms.set_indoor_bike_data_handler(my_measurement_handler)
+                #print("message is", message)
+                
+                await ftms.enable_indoor_bike_data_notify()
+                ftms.set_control_point_response_handler(print_control_point_response)
+                await ftms.enable_control_point_indicate()
+                
+                await ftms.request_control()
+                
+                prev_resistance = 0
+                for i in range(10):
+                    speed_data.append(['start', t_start, speed])
+                    #print(resistance_time)
+                    new_resistance = 0 #change
+                    if ((resistance_time in res_dic.keys()) and (prev_resistance != resistance_time)):
+                        prev_resistance = resistance_time
+                        new_resistance = res_dic[resistance_time] + resistance
+                        #print(new_resistance)
+                        if new_resistance >= 0:
+                            await ftms.set_target_power(speed*(new_resistance))
+                            #print(speed*(new_resistance))
+                            await asyncio.sleep(1)
+                        else:
+                            new_resistance = 0
+                            await ftms.set_target_power(speed*(new_resistance))
+                            #print(speed*(new_resistance))
+                            await asyncio.sleep(1)
+
+                    elif resistance_time == None:
+                        await ftms.set_target_power(0)
                         await asyncio.sleep(1)
                     else:
-                        new_resistance = 0
                         await ftms.set_target_power(speed*(new_resistance))
                         #print(speed*(new_resistance))
                         await asyncio.sleep(1)
-
-                elif resistance_time == None:
-                    await ftms.set_target_power(0)
-                    await asyncio.sleep(1)
-                else:
-                    await ftms.set_target_power(speed*(new_resistance))
-                    #print(speed*(new_resistance))
-                    await asyncio.sleep(1)
-            
-            await ftms.set_target_power(0)
-            await asyncio.sleep(5)
+                
+                await ftms.set_target_power(0)
+                await asyncio.sleep(5)
             
         except asyncio.CancelledError:
             print("CancelledError received. Disconnecting...")
