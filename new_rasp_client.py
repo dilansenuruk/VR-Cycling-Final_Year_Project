@@ -31,7 +31,7 @@ async def run(address):
         server_ip = "65.0.98.83" # replace with server ip
         server_port = 5500
         client_udp.bind(('0.0.0.0', 5400))
-        name = "ndl"
+        name = "Dialog User"
    
        #change on_message
         '''def on_message(client, userdata, msg):
@@ -66,7 +66,7 @@ async def run(address):
                 
         def my_measurement_handler(data):
             global speed
-            global resistance
+            global video_time
             global t_start
             global message
             global resistance_time
@@ -75,6 +75,9 @@ async def run(address):
             global seq_num
             global seq_numOculus
             global checkStart
+            global new_resistance
+            global prev_resistance
+            global resistance
             eps = 1e-10
             speed = data[0]
             power = data[6]
@@ -93,7 +96,7 @@ async def run(address):
             udp_send(client_udp, message, name)
             receiving_string = udp_receive(client_udp)
             print(receiving_string)
-            client_type, id_name, seq_numOculus, resistance, resistance_time = receiving_string.split(":")
+            client_type, id_name, seq_numOculus, resistance_time, video_time = receiving_string.split(":")
         
                      
 
@@ -113,7 +116,7 @@ async def run(address):
 
 
             client_udp.connect((server_ip, server_port))
-            udp_client_createGame(client_udp)
+            #udp_client_createGame(client_udp)
             udp_client_ready(client_udp,name)
             
             startMsg = udp_receive(client_udp)
@@ -135,7 +138,7 @@ async def run(address):
                 for i in range(100):
                     speed_data.append(['start', t_start, speed])
                     #print(resistance_time)
-                    new_resistance = 0 #change
+                    #new_resistance = 0 #change
                     if ((resistance_time in res_dic.keys()) and (prev_resistance != resistance_time)):
                         prev_resistance = resistance_time
                         new_resistance = res_dic[resistance_time] + resistance
