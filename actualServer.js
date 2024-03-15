@@ -124,8 +124,8 @@ server.on('message', (message, senderInfo) => {
             }
             else if (messageType === 'R'){
                 //send message to the client with same playerName but messageType is "O"
-                console.log("broadcasting")
-                broadcast(message)
+                //console.log("broadcasting")
+                //broadcast(message)
                 const matchingOculusClient = clientsOculus.find(client => client.playerName === playerName);
                 if (matchingOculusClient) {
                     // Send the message to the matching Oculus client
@@ -148,17 +148,7 @@ server.on('message', (message, senderInfo) => {
 });
 
 function broadcast(message) {
-    // clientsOculus.forEach((client) => {
-    //     server.send(message, client.port, client.address, (error) => {
-    //         if (error) {
-    //             console.error(`Error broadcasting to ${client.address}:${client.port}: ${error.message}`);
-    //         } else {
-    //             console.log(`Start Message broadcasted to ${client.address}:${client.port}`);
-    //         }
-    //     });
-    // });
-    // added for now: testing
-    clientsRasp.forEach((client) => {
+    clientsOculus.forEach((client) => {
         server.send(message, client.port, client.address, (error) => {
             if (error) {
                 console.error(`Error broadcasting to ${client.address}:${client.port}: ${error.message}`);
@@ -167,6 +157,16 @@ function broadcast(message) {
             }
         });
     });
+    //added for now: testing
+    // clientsRasp.forEach((client) => {
+    //     server.send(message, client.port, client.address, (error) => {
+    //         if (error) {
+    //             console.error(`Error broadcasting to ${client.address}:${client.port}: ${error.message}`);
+    //         } else {
+    //             console.log(`Start Message broadcasted to ${client.address}:${client.port}`);
+    //         }
+    //     });
+    // });
 }
 
 function broadcastStart(message) {
@@ -191,8 +191,8 @@ function broadcastStart(message) {
 }
 
 function checkAllClientsConnected() {
-    //return clientsOculus.length >= 1;
-    return clientsRasp.length >= 1;
+    return clientsOculus.length >= 1;
+    //return clientsRasp.length >= 1;
 }
 
 server.bind(5500);
