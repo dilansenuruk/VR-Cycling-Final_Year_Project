@@ -16,6 +16,7 @@ total_time = 0
 count = 0
 seq_num = 1
 resistance_time = None
+checkStart = True
 
 res_dic = {'1': 0.5 , '20': 5 , '52': 0.5 , '54': -4, '73': 1.4  , '84': -1.3 , '90': -5, '93': 3.3,
            '104': -0.4, '109':-3.1, '113': 3.3, '137':-3.2,'142': 0.95, '145': -1.3, '149': -2.2,
@@ -27,7 +28,7 @@ async def run(address):
     async with BleakClient(address) as client:
         speed_data = []
         client_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        server_ip = "35.154.53.245" # replace with server ip
+        server_ip = "65.0.98.83" # replace with server ip
         server_port = 5500
         client_udp.bind(('0.0.0.0', 5400))
         name = "ndl"
@@ -50,8 +51,14 @@ async def run(address):
         def udp_client_ready(client_socket,id):
             send_bytes = f"R:{id}:ready".encode('ascii')
             client_socket.send(send_bytes)
+        
+        def udp_client_createGame(client_socket):
+            send_bytes = f"create a game room".encode('ascii')
+            client_socket.send(send_bytes)
+
 
         def udp_receive(client_socket):
+            print("waiting for message to receive")
             receive_bytes, _ = client_socket.recvfrom(1024)
             received_string = receive_bytes.decode('ascii')
             #print("Message received from the server: " + received_string)
@@ -67,11 +74,13 @@ async def run(address):
             global id_name
             global seq_num
             global seq_numOculus
+            global checkStart
             eps = 1e-10
             speed = data[0]
             power = data[6]
             distance = data[4]
             resistance = power/(speed + eps)
+            checkStart = True
             
             #print(datetime.now(), "Speed:", data[0], "Distance:", data[4], "Power:", data[6], "Resistance:", resistance)
             #print("Time when speed data came:", t_start, 'speed =', speed)
@@ -104,12 +113,14 @@ async def run(address):
 
 
             client_udp.connect((server_ip, server_port))
-            await udp_client_ready(client_udp,name)
-            startMsg = await udp_receive(client_udp)
-
+            udp_client_createGame(client_udp)
+            udp_client_ready(client_udp,name)
+            
+            startMsg = udp_receive(client_udp)
+            print("this msg is", startMsg)
             #check if start message received
             if (startMsg == "Start"):     
-
+                print("here")
                 ftms = FitnessMachineService(client)
                 ftms.set_indoor_bike_data_handler(my_measurement_handler)
                 #print("message is", message)
@@ -121,7 +132,7 @@ async def run(address):
                 await ftms.request_control()
                 
                 #prev_resistance = 0
-                for i in range(10):
+                for i in range(100):
                     speed_data.append(['start', t_start, speed])
                     #print(resistance_time)
                     new_resistance = 0 #change
