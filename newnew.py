@@ -23,6 +23,7 @@ t_start = 0
 prev_resistance = 0
 total_time = 0
 count = 0
+seq_num = 1
 
 resistance_time = None
 resistance_time = None
@@ -82,6 +83,8 @@ async def run(address):
             global resistance_time
             global client_type
             global id_name
+            global seq_num
+
             eps = 1e-10
             speed = data[0]
             power = data[6]
@@ -92,7 +95,8 @@ async def run(address):
             #client_mqtt.publish("VRcycling/UserA/Speed", str(data[0])) #publish
             #client_mqtt.publish("VRcycling/UserA/Distance", str(data[4])) #publish
 
-            message = f"{speed}:{distance}"
+            message = f"{seq_num}:{speed}:{distance}"
+            seq_num += 1
             t_start = time.time()
             udp_send(client_udp, message, name)
             receiving_string = udp_receive(client_udp)
