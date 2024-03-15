@@ -140,8 +140,7 @@ server.on('message', (message, senderInfo) => {
             }
 
             console.log(`Message received from ${senderInfo.address}:${senderInfo.port}: ${messageString}`);
-            //broadcasting messages
-            //broadcast(message)
+            
         }
     }
 });
