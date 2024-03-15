@@ -20,14 +20,14 @@ server.on('listening', () => {
 
 
 server.on('message', (message, senderInfo) => {
-    console.log("msg received to the server", message)
     const messageString = message.toString();
+    console.log(messageString)
     console.log(senderInfo)
     
     if (messageString === 'create a game room') {
         setTimeout(() => {
             console.log("Timeout reached. Sending 'Start' message.");
-            broadcast('Start');
+            broadcastStart('Start');
             startMessageSent = true;
         }, 8000);
     }
@@ -48,13 +48,13 @@ server.on('message', (message, senderInfo) => {
                     port: senderInfo.port
                 });
     
-                console.log("Updated clients array:", clientsOculus);
+                //console.log("Updated clients array:", clientsOculus);
                 console.log(`Oculus Client at ${senderInfo.address}:${senderInfo.port} is ready.`);
                 
                 // Send an acknowledgment back to the client
-                server.send('ack', senderInfo.port, senderInfo.address, () => {
-                    console.log(`Acknowledgment sent to oculus ${senderInfo.address}:${senderInfo.port}`);
-                });
+                // server.send('ack', senderInfo.port, senderInfo.address, () => {
+                //     console.log(`Acknowledgment sent to oculus ${senderInfo.address}:${senderInfo.port}`);
+                // });
                 
             } else {
                 console.log(`Oculus Client at ${senderInfo.address}:${senderInfo.port} is already in the list.`);
@@ -79,9 +79,9 @@ server.on('message', (message, senderInfo) => {
                 console.log(`Rasp Client at ${senderInfo.address}:${senderInfo.port} is ready.`);
                 
                 // Send an acknowledgment back to the client
-                server.send('ack', senderInfo.port, senderInfo.address, () => {
-                    console.log(`Acknowledgment sent to rasp ${senderInfo.address}:${senderInfo.port}`);
-                });
+                // server.send('ack', senderInfo.port, senderInfo.address, () => {
+                //     console.log(`Acknowledgment sent to rasp ${senderInfo.address}:${senderInfo.port}`);
+                // });
                 
             } else {
                 console.log(`Rasp Client at ${senderInfo.address}:${senderInfo.port} is already in the list.`);
@@ -124,6 +124,8 @@ server.on('message', (message, senderInfo) => {
             }
             else if (messageType === 'R'){
                 //send message to the client with same playerName but messageType is "O"
+                console.log("broadcasting")
+                broadcast(message)
                 const matchingOculusClient = clientsOculus.find(client => client.playerName === playerName);
                 if (matchingOculusClient) {
                     // Send the message to the matching Oculus client
@@ -140,13 +142,43 @@ server.on('message', (message, senderInfo) => {
             }
 
             console.log(`Message received from ${senderInfo.address}:${senderInfo.port}: ${messageString}`);
-            //broadcasting messages
-            //broadcast(message)
+            
         }
     }
 });
 
 function broadcast(message) {
+    // clientsOculus.forEach((client) => {
+    //     server.send(message, client.port, client.address, (error) => {
+    //         if (error) {
+    //             console.error(`Error broadcasting to ${client.address}:${client.port}: ${error.message}`);
+    //         } else {
+    //             console.log(`Start Message broadcasted to ${client.address}:${client.port}`);
+    //         }
+    //     });
+    // });
+    // added for now: testing
+    clientsRasp.forEach((client) => {
+        server.send(message, client.port, client.address, (error) => {
+            if (error) {
+                console.error(`Error broadcasting to ${client.address}:${client.port}: ${error.message}`);
+            } else {
+                console.log(`Start Message broadcasted to ${client.address}:${client.port}`);
+            }
+        });
+    });
+}
+
+function broadcastStart(message) {
+    clientsRasp.forEach((client) => {
+        server.send(message, client.port, client.address, (error) => {
+            if (error) {
+                console.error(`Error broadcasting to ${client.address}:${client.port}: ${error.message}`);
+            } else {
+                console.log(`Start Message broadcasted to ${client.address}:${client.port}`);
+            }
+        });
+    });
     clientsOculus.forEach((client) => {
         server.send(message, client.port, client.address, (error) => {
             if (error) {
@@ -159,7 +191,8 @@ function broadcast(message) {
 }
 
 function checkAllClientsConnected() {
-    return clientsOculus.length >= 1;
+    //return clientsOculus.length >= 1;
+    return clientsRasp.length >= 1;
 }
 
 server.bind(5500);
