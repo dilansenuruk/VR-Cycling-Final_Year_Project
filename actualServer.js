@@ -153,20 +153,20 @@ function broadcast(message) {
             if (error) {
                 console.error(`Error broadcasting to ${client.address}:${client.port}: ${error.message}`);
             } else {
-                console.log(`Start Message broadcasted to ${client.address}:${client.port}`);
+                console.log(`Message broadcasted to ${client.address}:${client.port}`);
             }
         });
     });
     //added for now: testing
-    // clientsRasp.forEach((client) => {
-    //     server.send(message, client.port, client.address, (error) => {
-    //         if (error) {
-    //             console.error(`Error broadcasting to ${client.address}:${client.port}: ${error.message}`);
-    //         } else {
-    //             console.log(`Start Message broadcasted to ${client.address}:${client.port}`);
-    //         }
-    //     });
-    // });
+    clientsRasp.forEach((client) => {
+        server.send(message, client.port, client.address, (error) => {
+            if (error) {
+                console.error(`Error broadcasting to ${client.address}:${client.port}: ${error.message}`);
+            } else {
+                console.log(`Message broadcasted to ${client.address}:${client.port}`);
+            }
+        });
+    });
 }
 
 function broadcastStart(message) {
