@@ -28,7 +28,7 @@ async def run(address):
     async with BleakClient(address) as client:
         speed_data = []
         client_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        server_ip = "65.0.98.83" # replace with server ip
+        server_ip = "13.200.255.185" # replace with server ip
         server_port = 5500
         client_udp.bind(('0.0.0.0', 5400))
         name = "Dialog User"
@@ -123,7 +123,7 @@ async def run(address):
             print("this msg is", startMsg)
             #check if start message received
             if (startMsg == "Start"):     
-                print("here")
+                print("Start received")
                 ftms = FitnessMachineService(client)
                 ftms.set_indoor_bike_data_handler(my_measurement_handler)
                 #print("message is", message)
@@ -135,7 +135,8 @@ async def run(address):
                 await ftms.request_control()
                 
                 #prev_resistance = 0
-                for i in range(100):
+                for i in range(300):
+                    global new_resistance
                     speed_data.append(['start', t_start, speed])
                     #print(resistance_time)
                     #new_resistance = 0 #change
