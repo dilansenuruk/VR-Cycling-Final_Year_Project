@@ -71,6 +71,7 @@ server.on('message', (message, senderInfo) => {
 
             broadcastWorker.on('message', (result) => {
                 console.log(`Broadcasting completed: ${result}`);
+                server.send(result, )
             });
 
             broadcastWorker.on('error', (error) => {

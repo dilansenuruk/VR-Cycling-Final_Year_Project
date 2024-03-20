@@ -1,6 +1,9 @@
 const { error } = require('console');
 const dgram = require('dgram');
 const server = dgram.createSocket('udp4');
+const os = require('os');
+const numCPUs = os.cpus().length;
+console.log(`Number of CPU cores: ${numCPUs}`);
 
 const clientsOculus = [];
 const clientsRasp = [];
@@ -25,6 +28,9 @@ server.on('message', (message, senderInfo) => {
     console.log(senderInfo)
     
     if (messageString === 'create a game room') {
+        // clear the arrays clientsOculus and clientRasp
+        clientsOculus.length = 0;
+        clientsRasp.length = 0;
         setTimeout(() => {
             console.log("Timeout reached. Sending 'Start' message.");
             broadcastStart('Start');
@@ -126,6 +132,7 @@ server.on('message', (message, senderInfo) => {
                 //send message to the client with same playerName but messageType is "O"
                 //console.log("broadcasting")
                 //broadcast(message)
+                // need to change
                 const matchingOculusClient = clientsOculus.find(client => client.playerName === playerName);
                 if (matchingOculusClient) {
                     // Send the message to the matching Oculus client
