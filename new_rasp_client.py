@@ -27,7 +27,7 @@ async def run(address):
     async with BleakClient(address) as client:
         speed_data = []
         client_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        server_ip = "13.200.255.185" # replace with server ip
+        server_ip = "43.205.235.78" # replace with server ip
         server_port = 5500
         client_udp.bind(('0.0.0.0', 5400))
         name = "Dialog User"
