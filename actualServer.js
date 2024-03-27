@@ -33,8 +33,14 @@ server.on('message', (message, senderInfo) => {
         clientsRasp.length = 0;
         setTimeout(() => {
             console.log("Timeout reached. Sending 'Start' message.");
-            broadcastStart('Start');
+            sendPlayerNames(clientsOculus);
+            setTimeout(() => {
+                broadcastStart('Start');
+                startMessageSent = true;
+            }, 2000);
+            
             startMessageSent = true;
+
         }, 8000);
     }
 
@@ -110,6 +116,7 @@ server.on('message', (message, senderInfo) => {
     else {
         
         if (startMessageSent && checkAllClientsConnected()) {
+
             const [messageType, playerName, sequenceNum, charOne, charTwo] = messageString.split(":");
             if (messageType === 'O'){
                 broadcast(message)
@@ -165,15 +172,15 @@ function broadcast(message) {
         });
     });
     //added for now: testing
-    clientsRasp.forEach((client) => {
-        server.send(message, client.port, client.address, (error) => {
-            if (error) {
-                console.error(`Error broadcasting to ${client.address}:${client.port}: ${error.message}`);
-            } else {
-                console.log(`Message broadcasted to ${client.address}:${client.port}`);
-            }
-        });
-    });
+    // clientsRasp.forEach((client) => {
+    //     server.send(message, client.port, client.address, (error) => {
+    //         if (error) {
+    //             console.error(`Error broadcasting to ${client.address}:${client.port}: ${error.message}`);
+    //         } else {
+    //             console.log(`Message broadcasted to ${client.address}:${client.port}`);
+    //         }
+    //     });
+    // });
 }
 
 function broadcastStart(message) {
@@ -201,5 +208,22 @@ function checkAllClientsConnected() {
     return clientsOculus.length >= 1;
     //return clientsRasp.length >= 1;
 }
+
+// Function to send player names to clients
+function sendPlayerNames(clientList) {
+    const playerNames = clientList.map(client => client.playerName).join(',');
+    const prefixedMessage = `playerNames:${playerNames}`;
+    const message = Buffer.from(prefixedMessage);
+    clientList.forEach(client => {
+        server.send(message, client.port, client.address, (error) => {
+            if (error) {
+                console.error(`Error sending message to ${client.playerName}: ${error.message}`);
+            } else {
+                console.log(`Player names sent to ${client.playerName}`);
+            }
+        });
+    });
+}
+
 
 server.bind(5500);
