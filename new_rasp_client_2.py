@@ -30,7 +30,7 @@ async def run(address):
         server_ip = "65.0.76.120" # replace with server ip
         server_port = 5500
         client_udp.bind(('0.0.0.0', 5400))
-        name = "p1"
+        name = "ndl"
    
        #change on_message
         '''def on_message(client, userdata, msg):
@@ -41,11 +41,10 @@ async def run(address):
                 resistance_time = msg.payload.decode()
                 #print("Time Duration for Increasing Resistance:", resistance_time)
             elif msg.topic == "VRcycling/UserA/Delay":
-                received_me                                                      bb  -11ssage_topic2 = msg.payload.decode()
+                received_message_topic2 = msg.payload.decode()
                 t_end = time.time()'''
         def udp_send(client_socket, message, id):
             send_bytes = f"R:{id}:{message}".encode('ascii')
-            print(f"R:{id}:{message}")
             client_socket.send(send_bytes)
 
         def udp_client_ready(client_socket,id):
@@ -58,10 +57,10 @@ async def run(address):
 
 
         def udp_receive(client_socket):
-            #print("waiting for message to receive")
+            print("waiting for message to receive")
             receive_bytes, _ = client_socket.recvfrom(1024)
             received_string = receive_bytes.decode('ascii')
-            print("Message received from the server: " + received_string)
+            #print("Message received from the server: " + received_string)
             return received_string 
                 
         def my_measurement_handler(data):
@@ -95,7 +94,7 @@ async def run(address):
             t_start = time.time()
             udp_send(client_udp, message, name)
             receiving_string = udp_receive(client_udp)
-            #print(receiving_string)
+            print(receiving_string)
             client_type, id_name, seq_numOculus, resistance_time, video_time = receiving_string.split(":")
         
                      
@@ -116,11 +115,15 @@ async def run(address):
 
 
             client_udp.connect((server_ip, server_port))
-            #udp_client_createGame(client_udp)
-            
             udp_client_ready(client_udp,name)
+            #udp_client_createGame(client_udp)
+
             
-            startMsg = udp_receive(client_udp)
+            Msg = udp_receive(client_udp)
+            if (Msg == "game created"):
+                print("game created received")
+                udp_client_ready(client_udp,name)
+                startMsg = udp_receive(client_udp)
             print("this msg is", startMsg)
             #check if start message received
             if (startMsg == "Start"):     
@@ -136,9 +139,8 @@ async def run(address):
                 await ftms.request_control()
                 
                 #prev_resistance = 0
-                for i in range(3000):
+                for i in range(300):
                     global new_resistance
-                    global prev_resistance
                     speed_data.append(['start', t_start, speed])
                     #print(resistance_time)
                     #new_resistance = 0 #change
@@ -187,7 +189,6 @@ if __name__ == "__main__":
     os.environ["PYTHONASYNCIODEBUG"] = str(1)
     #device_address = "D8:87:6C:82:51:0D"
     device_address = "D5:6A:1A:46:93:4B"
-    #device_address = "D8:ED:35:29:B4:C6" 
     
     loop = asyncio.get_event_loop()
     try:

@@ -78,11 +78,11 @@ async def udp_client_ready(client_socket):
 async def main():
     global client
     client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server_ip = "3.109.133.185"
+    server_ip = "3.111.219.116"
     server_port = 5500
     client.bind(('0.0.0.0', 5800))
     client_id = "ndl"
-    number_of_messages = 1000
+    number_of_messages = 200
     received_counts = {}  # Dictionary to store received message counts for each client
     return_counts = {}   # Dictionary to store returning message counts for each client
     received_sequence_numbers = set(range(1, number_of_messages + 1))
@@ -107,7 +107,7 @@ async def main():
         print("Exception thrown: ", str(e))
 
     await udp_client_ready(client)
-    await asyncio.sleep(0.1)
+    await asyncio.sleep(1)
 
     
     for i in range(1,number_of_messages+1):
@@ -130,7 +130,7 @@ async def main():
             else:
                 check_in = False
         check_in = True
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(1)
     
     # Check for lost packets for each client
     while check:
