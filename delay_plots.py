@@ -78,7 +78,7 @@ async def udp_client_ready(client_socket):
 async def main():
     global client
     client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server_ip = "3.111.219.116"
+    server_ip = "192.168.56.1"
     server_port = 5500
     client.bind(('0.0.0.0', 5800))
     client_id = "ndl"

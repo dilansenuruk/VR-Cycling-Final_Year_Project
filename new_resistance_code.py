@@ -1,6 +1,7 @@
 import asyncio
 import time
 import socket
+import math
 from bleak import BleakClient
 from datetime import datetime
 from pycycling_edited.fitness_machine_service import FitnessMachineService
@@ -16,6 +17,9 @@ count = 0
 seq_num = 1
 resistance_time = None
 checkStart = True
+weight = 800
+new_power = 0
+
 
 avg_res = [-0.01, 0.0, 0.0, 0.0, -0.01, -0.01, 0.0, 0.0, -0.01, -0.01, -0.02, 0.09, 0.08, 0.01, 0.0, 
         0.04, -0.05, -0.01, -0.08, 0.13, 0.1, -0.07, -0.02, 0.0, -0.07, -0.07, -0.08, -0.06, -0.04,
@@ -113,12 +117,10 @@ async def run(address):
             t_start = time.time()
             udp_send(client_udp, message, name)
             receiving_string = udp_receive(client_udp)
-            receiving_string = udp_receive(client_udp)
-            receiving_string = udp_receive(client_udp)
-            receiving_string = udp_receive(client_udp)
+            
             #print(receiving_string)
-            client_type, id_name, seq_numOculus, resistance_time, video_time = receiving_string.split(":")
-        
+            client_type, id_name, seq_numOculus, resistance_time_str, video_time = receiving_string.split(":")
+            resistance_time = int(resistance_time_str)
                      
 
             '''client_mqtt.subscribe("VRcycling/UserA/IncTime") #subscribe
@@ -143,7 +145,8 @@ async def run(address):
             startMsg = udp_receive(client_udp)
             print("this msg is", startMsg)
             #check if start message received
-            if (startMsg == "Start"):     
+            if (startMsg == "Start"): 
+                global weight    
                 print("Start received")
                 ftms = FitnessMachineService(client)
                 ftms.set_indoor_bike_data_handler(my_measurement_handler)
@@ -154,22 +157,35 @@ async def run(address):
                 await ftms.enable_control_point_indicate()
                 
                 await ftms.request_control()
-                
+                print(weight)
                 #prev_resistance = 0
                 for i in range(3000):
-                    
+                    #global weight
+                    await asyncio.sleep(1)
+                    print("wei", weight)
+                    global new_power
                     global new_resistance
                     global prev_resistance
-                    new_resistance = avg_res[resistance_time]
-                    #print(resistance_time)
+                    new_resistance = avg_res[resistance_time] # mg[sinx]
+                    print("in_1")
                     #new_resistance = 0 #change
-                    if (prev_resistance != new_resistance):
+                    if (resistance_time):
+                        print("in_2")
                         prev_resistance = new_resistance
-                        new_power = new_resistance*speed
-                        #print(new_resistance)
+                        new_power = weight*(math.sin(new_resistance)+0.6*math.cos(new_resistance))*speed
+                        print("target power", new_power)
                         await ftms.set_target_power(new_power)
                             #print(speed*(new_resistance))
                         await asyncio.sleep(1)
+                        if new_power >= 0:
+                            await ftms.set_target_power(new_power)
+                            #print(speed*(new_resistance))
+                            await asyncio.sleep(1)
+                        else:
+                            new_power = 0
+                            await ftms.set_target_power(new_power)
+                            #print(speed*(new_resistance))
+                            await asyncio.sleep(1)
                         
                     elif resistance_time == None:
                         await ftms.set_target_power(0)
@@ -201,8 +217,8 @@ if __name__ == "__main__":
     
     os.environ["PYTHONASYNCIODEBUG"] = str(1)
     #device_address = "D8:87:6C:82:51:0D"
-    device_address = "D5:6A:1A:46:93:4B"
-    #device_address = "D8:ED:35:29:B4:C6" 
+    #device_address = "D5:6A:1A:46:93:4B"
+    device_address = "D8:ED:35:29:B4:C6" 
     
     loop = asyncio.get_event_loop()
     try:
