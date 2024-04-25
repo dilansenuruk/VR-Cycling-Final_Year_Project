@@ -27,6 +27,48 @@ avg_res = {8: 0.577, 17: -2.338, 41: -6.0, 61: -2.338,  65: 0.2885, 76: 1.1105, 
 #avg_res = {8: 0.577, 9: -2.338, 20: -6.0, 30: -2.338, 32: 0.2885, 38: 1.1105, 44: 0.2885, 46: -2.338, 54: 0.2885, 88: 1.1105, 90: 1.1105, 93: 0.2885, 100: 1.5105, 116: 1.5, 130: 0.2885, 146: -0.57, 149: 0.2885}
 print(len(avg_res))
 
+async def udp_receive(client_udp, server_ip, server_port):
+    loop = asyncio.get_running_loop()
+    protocol = UdpReceiverProtocol(client_udp)  # Pass client_udp here
+
+    transport, _ = await loop.create_datagram_endpoint(
+        lambda: protocol, local_addr=("0.0.0.0", 0)
+    )
+
+    try:
+        protocol.set_handler(handle_received_message)
+        await protocol.wait_for_message()
+    finally:
+        transport.close()
+
+
+class UdpReceiverProtocol(asyncio.DatagramProtocol):
+    def __init__(self, client_udp):
+        super().__init__()
+        self._message_received = asyncio.Event()
+        self.handler = None
+        self.client_udp = client_udp
+
+    def connection_made(self, transport):
+        pass
+
+    def datagram_received(self, data, addr):
+        message = data.decode().strip()
+        if self.handler:
+            self.handler(message)
+        self._message_received.set()
+        self._message_received.clear()  # Reset the event for the next message
+
+    async def wait_for_message(self):
+        await self._message_received.wait()
+
+    def set_handler(self, handler):
+        self.handler = handler
+
+
+def handle_received_message(message):
+    print("Message received from server:", message)
+    # Add your logic here to handle the received message
 
 async def run(address):
     async with BleakClient(address) as client:
@@ -57,11 +99,7 @@ async def run(address):
             received_string = receive_bytes.decode('ascii')
             print("Message received from the server: " + received_string)
             return received_string 
-        def make_socket_non_blocking(sock):
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            sock.setblocking(False)
-
-        make_socket_non_blocking(client_udp)
+        
                 
         def my_measurement_handler(data):
             global speed
@@ -177,7 +215,7 @@ async def run(address):
                 await ftms.request_control()
 
                 print(weight)
-                await udp_receive(client_udp, server_ip, server_port) # this is the function need to develop
+                await udp_receive(client_udp, server_ip, server_port)
                 #prev_resistance = 0
                 #await udp_receive2(client_udp)
 

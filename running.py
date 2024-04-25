@@ -22,12 +22,8 @@ new_power = 0
 next_elevation = 0
 prev_elevation = None
 
-avg_res = {8: 0.577, 17: -2.338, 41: -6.0, 61: -2.338,  65: 0.2885, 76: 1.1105, 87: 0.2885, 91: -2.338, 107: 0.2885, 175: 1.1105, 181: 1.1105, 186: 0.2885, 200: 1.5105, 233: 1.7, 259: 0.2885, 291: -0.57, 298:0.2885 }
-#avg_res = {8: 0.577, 17: -2.338, 41: -6.0, 61: -2.338,  65: 0.2885, 76: 1.1105, 87: 0.2885, 91: -2.338, 107: 0.2885, 175: 1.1105, 181: 1.1105, 186: 0.2885, 200: 1.1105, 233: 1.5, 259: 0.2885, 291: -0.57, 298:0.2885 }
-#avg_res = {8: 0.577, 9: -2.338, 20: -6.0, 30: -2.338, 32: 0.2885, 38: 1.1105, 44: 0.2885, 46: -2.338, 54: 0.2885, 88: 1.1105, 90: 1.1105, 93: 0.2885, 100: 1.5105, 116: 1.5, 130: 0.2885, 146: -0.57, 149: 0.2885}
+avg_res = {8: 0.577, 17: -1.169, 41: -3.0, 61: -1.169,  65: 0.577, 76: 2.221, 87: 0.577, 91: -1.169, 107: 0.577, 175: 1.413, 181: 2.221, 186: 0.577, 200: 2.221, 233: 3.0, 259: 0.577, 291: -0.285, 298:0.577 }
 print(len(avg_res))
-
-
 async def run(address):
     async with BleakClient(address) as client:
         speed_data = []
@@ -35,7 +31,7 @@ async def run(address):
         server_ip = "65.0.76.120" # replace with server ip
         server_port = 5500
         client_udp.bind(('0.0.0.0', 5400))
-        name = "nadu"
+        name = "Pasindu"
 
         def udp_send(client_socket, message, id):
             send_bytes = f"R:{id}:{message}".encode('ascii')
@@ -51,17 +47,12 @@ async def run(address):
             client_socket.send(send_bytes)
 
 
-        def udp_receive_ready(client_socket):
+        def udp_receive(client_socket):
             #print("waiting for message to receive")
             receive_bytes, _ = client_socket.recvfrom(1024)
             received_string = receive_bytes.decode('ascii')
             print("Message received from the server: " + received_string)
             return received_string 
-        def make_socket_non_blocking(sock):
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            sock.setblocking(False)
-
-        make_socket_non_blocking(client_udp)
                 
         def my_measurement_handler(data):
             global speed
@@ -88,11 +79,11 @@ async def run(address):
             seq_num += 1
             t_start = time.time()
             udp_send(client_udp, message, name)
+            receiving_string = udp_receive(client_udp)
             
-               #print(receiving_string)
-            resistance_time_str = 'N/A'
-            if (resistance_time_str != 'N/A'):
-                resistance_time = int(resistance_time_str)            
+            #print(receiving_string)
+            client_type, id_name, seq_numOculus, resistance_time_str, video_time = receiving_string.split(":")
+            resistance_time = int(resistance_time_str)            
             #print(weight)
             global new_power
             global new_resistance
@@ -122,10 +113,7 @@ async def run(address):
                 prev_elevation = next_elevation
                 prev_resistance = resistance_time 
 
-                if (next_elevation>0):
-                    new_power = new_resistance*5 + 20
-                else: 
-                    new_power = new_resistance*10 + 20
+                new_power = new_resistance*10 +20
                 new_power = round(new_power, 2)
                 print("target power", new_power)
                 asyncio.ensure_future(ftms.set_target_power(new_power))
@@ -160,7 +148,7 @@ async def run(address):
             
             udp_client_ready(client_udp,name)
             
-            startMsg = udp_receive_ready(client_udp)
+            startMsg = udp_receive(client_udp)
             print("this msg is", startMsg)
             #check if start message received
             if (startMsg == "Start"): 
@@ -175,11 +163,8 @@ async def run(address):
                 await ftms.enable_control_point_indicate()
                 
                 await ftms.request_control()
-
                 print(weight)
-                await udp_receive(client_udp, server_ip, server_port) # this is the function need to develop
                 #prev_resistance = 0
-                #await udp_receive2(client_udp)
 
                 
                 #await ftms.set_target_power()
@@ -204,8 +189,8 @@ if __name__ == "__main__":
     
     os.environ["PYTHONASYNCIODEBUG"] = str(1)
     #device_address = "D8:87:6C:82:51:0D"
-    device_address = "D5:6A:1A:46:93:4B"
-    #device_address = "D8:ED:35:29:B4:C6" 
+    #device_address = "D5:6A:1A:46:93:4B"
+    device_address = "D8:ED:35:29:B4:C6" 
     
     loop = asyncio.get_event_loop()
     try:

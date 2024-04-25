@@ -120,7 +120,7 @@ class FitnessMachineService:
     async def disable_indoor_bike_data_notify(self):
         await self._client.stop_notify(ftms_indoor_bike_data_characteristic_id)
 
-    def set_indoor_bike_data_handler(self, callback):
+    def set_indoor_bike_data_handler(self, callback): #changed
         self._indoor_bike_data_callback = callback
 
     def _indoor_bike_data_notification_handler(

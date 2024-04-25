@@ -26,8 +26,6 @@ avg_res = {8: 0.577, 17: -2.338, 41: -6.0, 61: -2.338,  65: 0.2885, 76: 1.1105, 
 #avg_res = {8: 0.577, 17: -2.338, 41: -6.0, 61: -2.338,  65: 0.2885, 76: 1.1105, 87: 0.2885, 91: -2.338, 107: 0.2885, 175: 1.1105, 181: 1.1105, 186: 0.2885, 200: 1.1105, 233: 1.5, 259: 0.2885, 291: -0.57, 298:0.2885 }
 #avg_res = {8: 0.577, 9: -2.338, 20: -6.0, 30: -2.338, 32: 0.2885, 38: 1.1105, 44: 0.2885, 46: -2.338, 54: 0.2885, 88: 1.1105, 90: 1.1105, 93: 0.2885, 100: 1.5105, 116: 1.5, 130: 0.2885, 146: -0.57, 149: 0.2885}
 print(len(avg_res))
-
-
 async def run(address):
     async with BleakClient(address) as client:
         speed_data = []
@@ -51,17 +49,19 @@ async def run(address):
             client_socket.send(send_bytes)
 
 
-        def udp_receive_ready(client_socket):
+        def udp_receive(client_socket):
             #print("waiting for message to receive")
             receive_bytes, _ = client_socket.recvfrom(1024)
             received_string = receive_bytes.decode('ascii')
             print("Message received from the server: " + received_string)
             return received_string 
-        def make_socket_non_blocking(sock):
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            sock.setblocking(False)
-
-        make_socket_non_blocking(client_udp)
+        
+        async def udp_receive2(client_socket):
+            #print("waiting for message to receive")
+            receive_bytes, _ = client_socket.recvfrom(1024)
+            received_string = receive_bytes.decode('ascii')
+            print("Message received from the server: in udp 2" + received_string)
+            return received_string
                 
         def my_measurement_handler(data):
             global speed
@@ -88,9 +88,10 @@ async def run(address):
             seq_num += 1
             t_start = time.time()
             udp_send(client_udp, message, name)
+            receiving_string = udp_receive(client_udp)
             
                #print(receiving_string)
-            resistance_time_str = 'N/A'
+            client_type, id_name, seq_numOculus, resistance_time_str, video_time = receiving_string.split(":")
             if (resistance_time_str != 'N/A'):
                 resistance_time = int(resistance_time_str)            
             #print(weight)
@@ -160,7 +161,7 @@ async def run(address):
             
             udp_client_ready(client_udp,name)
             
-            startMsg = udp_receive_ready(client_udp)
+            startMsg = udp_receive(client_udp)
             print("this msg is", startMsg)
             #check if start message received
             if (startMsg == "Start"): 
@@ -175,10 +176,12 @@ async def run(address):
                 await ftms.enable_control_point_indicate()
                 
                 await ftms.request_control()
-
                 print(weight)
-                await udp_receive(client_udp, server_ip, server_port) # this is the function need to develop
                 #prev_resistance = 0
+                udp_receive(client_udp)
+                #udp_receive2(client_udp)
+
+
                 #await udp_receive2(client_udp)
 
                 

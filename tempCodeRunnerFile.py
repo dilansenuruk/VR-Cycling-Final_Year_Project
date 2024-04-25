@@ -1,1 +1,1 @@
-1
+resistance_time

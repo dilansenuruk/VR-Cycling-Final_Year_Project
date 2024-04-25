@@ -5,7 +5,12 @@ import math
 from bleak import BleakClient
 from datetime import datetime
 from pycycling_edited.fitness_machine_service import FitnessMachineService
+import paho.mqtt.client as mqtt
 
+
+broker_address = "test.mosquitto.org" #external broker
+client_mqtt = mqtt.Client("10.10.14.3") #create new instance
+client_mqtt.connect(broker_address) #connect to broker
 speed = 0
 resistance = 0
 new_resistance = 0
@@ -21,13 +26,10 @@ weight = 400
 new_power = 0
 next_elevation = 0
 prev_elevation = None
+received_message_topic1 ="0"
 
-avg_res = {8: 0.577, 17: -2.338, 41: -6.0, 61: -2.338,  65: 0.2885, 76: 1.1105, 87: 0.2885, 91: -2.338, 107: 0.2885, 175: 1.1105, 181: 1.1105, 186: 0.2885, 200: 1.5105, 233: 1.7, 259: 0.2885, 291: -0.57, 298:0.2885 }
-#avg_res = {8: 0.577, 17: -2.338, 41: -6.0, 61: -2.338,  65: 0.2885, 76: 1.1105, 87: 0.2885, 91: -2.338, 107: 0.2885, 175: 1.1105, 181: 1.1105, 186: 0.2885, 200: 1.1105, 233: 1.5, 259: 0.2885, 291: -0.57, 298:0.2885 }
-#avg_res = {8: 0.577, 9: -2.338, 20: -6.0, 30: -2.338, 32: 0.2885, 38: 1.1105, 44: 0.2885, 46: -2.338, 54: 0.2885, 88: 1.1105, 90: 1.1105, 93: 0.2885, 100: 1.5105, 116: 1.5, 130: 0.2885, 146: -0.57, 149: 0.2885}
+avg_res = {8: 0.577, 17: -2.338, 41: -6.0, 61: -2.338,  65: 0.2885, 76: 1.1105, 87: 0.2885, 91: -2.338, 107: 0.2885, 175: 1.1105, 181: 1.1105, 186: 0.2885, 200: 1.1105, 233: 1.5, 259: 0.2885, 291: -0.57,298:0.2885}
 print(len(avg_res))
-
-
 async def run(address):
     async with BleakClient(address) as client:
         speed_data = []
@@ -35,8 +37,13 @@ async def run(address):
         server_ip = "65.0.76.120" # replace with server ip
         server_port = 5500
         client_udp.bind(('0.0.0.0', 5400))
-        name = "nadu"
+        name = "Pasindu"
 
+        def on_message(client, userdata, msg):
+            global received_message_topic1
+            if msg.topic == "VRcycling/restime":
+                received_message_topic1 = msg.payload.decode()
+                print("Time Duration for Increasing Resistance:", received_message_topic1)
         def udp_send(client_socket, message, id):
             send_bytes = f"R:{id}:{message}".encode('ascii')
             print(f"R:{id}:{message}")
@@ -51,17 +58,12 @@ async def run(address):
             client_socket.send(send_bytes)
 
 
-        def udp_receive_ready(client_socket):
+        def udp_receive(client_socket):
             #print("waiting for message to receive")
             receive_bytes, _ = client_socket.recvfrom(1024)
             received_string = receive_bytes.decode('ascii')
             print("Message received from the server: " + received_string)
             return received_string 
-        def make_socket_non_blocking(sock):
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            sock.setblocking(False)
-
-        make_socket_non_blocking(client_udp)
                 
         def my_measurement_handler(data):
             global speed
@@ -84,13 +86,17 @@ async def run(address):
             resistance = power/(speed + eps)
             checkStart = True
             print("speed", speed)
+            print("power", power)
             message = f"{seq_num}:{speed}:{distance}"
             seq_num += 1
             t_start = time.time()
             udp_send(client_udp, message, name)
-            
-               #print(receiving_string)
-            resistance_time_str = 'N/A'
+            #receiving_string = udp_receive(client_udp)
+            client_mqtt.subscribe("VRcycling/restime") #subscribe
+            # Set the callback function for when a message is received
+            client_mqtt.on_message = on_message
+            #print(receiving_string)
+            resistance_time_str= received_message_topic1
             if (resistance_time_str != 'N/A'):
                 resistance_time = int(resistance_time_str)            
             #print(weight)
@@ -122,10 +128,11 @@ async def run(address):
                 prev_elevation = next_elevation
                 prev_resistance = resistance_time 
 
-                if (next_elevation>0):
+                new_power = new_resistance*10 + 20
+                '''if (next_elevation>0):
                     new_power = new_resistance*5 + 20
                 else: 
-                    new_power = new_resistance*10 + 20
+                    new_power = new_resistance*10 + 20'''
                 new_power = round(new_power, 2)
                 print("target power", new_power)
                 asyncio.ensure_future(ftms.set_target_power(new_power))
@@ -160,7 +167,7 @@ async def run(address):
             
             udp_client_ready(client_udp,name)
             
-            startMsg = udp_receive_ready(client_udp)
+            startMsg = udp_receive(client_udp)
             print("this msg is", startMsg)
             #check if start message received
             if (startMsg == "Start"): 
@@ -175,11 +182,8 @@ async def run(address):
                 await ftms.enable_control_point_indicate()
                 
                 await ftms.request_control()
-
                 print(weight)
-                await udp_receive(client_udp, server_ip, server_port) # this is the function need to develop
                 #prev_resistance = 0
-                #await udp_receive2(client_udp)
 
                 
                 #await ftms.set_target_power()
@@ -206,7 +210,7 @@ if __name__ == "__main__":
     #device_address = "D8:87:6C:82:51:0D"
     device_address = "D5:6A:1A:46:93:4B"
     #device_address = "D8:ED:35:29:B4:C6" 
-    
+    client_mqtt.loop_start()
     loop = asyncio.get_event_loop()
     try:
         loop.run_until_complete(run(device_address))
@@ -219,4 +223,7 @@ if __name__ == "__main__":
 
         # Wait for all tasks to be cancelled
         loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
+        client_mqtt.disconnect()
+        client_mqtt.loop_stop()
+    
 

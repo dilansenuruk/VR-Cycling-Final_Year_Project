@@ -110,8 +110,8 @@ async def run(address):
 if __name__ == "__main__":
     import os
     os.environ["PYTHONASYNCIODEBUG"] = str(1)
-    #device_address = "D5:6A:1A:46:93:4B"
-    device_address = "D8:ED:35:29:B4:C6"
+    device_address = "D5:6A:1A:46:93:4B"
+    #device_address = "D8:ED:35:29:B4:C6"
     client_mqtt.loop_start()
 
     loop = asyncio.get_event_loop()

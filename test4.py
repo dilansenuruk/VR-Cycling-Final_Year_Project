@@ -22,12 +22,8 @@ new_power = 0
 next_elevation = 0
 prev_elevation = None
 
-avg_res = {8: 0.577, 17: -2.338, 41: -6.0, 61: -2.338,  65: 0.2885, 76: 1.1105, 87: 0.2885, 91: -2.338, 107: 0.2885, 175: 1.1105, 181: 1.1105, 186: 0.2885, 200: 1.5105, 233: 1.7, 259: 0.2885, 291: -0.57, 298:0.2885 }
-#avg_res = {8: 0.577, 17: -2.338, 41: -6.0, 61: -2.338,  65: 0.2885, 76: 1.1105, 87: 0.2885, 91: -2.338, 107: 0.2885, 175: 1.1105, 181: 1.1105, 186: 0.2885, 200: 1.1105, 233: 1.5, 259: 0.2885, 291: -0.57, 298:0.2885 }
-#avg_res = {8: 0.577, 9: -2.338, 20: -6.0, 30: -2.338, 32: 0.2885, 38: 1.1105, 44: 0.2885, 46: -2.338, 54: 0.2885, 88: 1.1105, 90: 1.1105, 93: 0.2885, 100: 1.5105, 116: 1.5, 130: 0.2885, 146: -0.57, 149: 0.2885}
+avg_res = {8: 0.577, 17: -2.338, 41: -6.0, 61: -2.338,  65: 0.2885, 76: 1.1105, 87: 0.2885, 91: -2.338, 107: 0.2885, 175: 0.7065, 181: 1.1105, 186: 0.2885, 200: 1.1105, 233: 1.5, 259: 0.2885, 291: -0.57, 298:0.2885 }
 print(len(avg_res))
-
-
 async def run(address):
     async with BleakClient(address) as client:
         speed_data = []
@@ -35,35 +31,31 @@ async def run(address):
         server_ip = "65.0.76.120" # replace with server ip
         server_port = 5500
         client_udp.bind(('0.0.0.0', 5400))
-        name = "nadu"
+        name = "Senuruk"
 
-        def udp_send(client_socket, message, id):
+        async def udp_send(client_socket, message, id):
             send_bytes = f"R:{id}:{message}".encode('ascii')
             print(f"R:{id}:{message}")
             client_socket.send(send_bytes)
 
-        def udp_client_ready(client_socket,id):
+        async def udp_client_ready(client_socket,id):
             send_bytes = f"R:{id}:ready".encode('ascii')
             client_socket.send(send_bytes)
         
-        def udp_client_createGame(client_socket):
+        async def udp_client_createGame(client_socket):
             send_bytes = f"create a game room".encode('ascii')
             client_socket.send(send_bytes)
 
 
-        def udp_receive_ready(client_socket):
+        async def udp_receive(client_socket):
             #print("waiting for message to receive")
+            global received_string
             receive_bytes, _ = client_socket.recvfrom(1024)
             received_string = receive_bytes.decode('ascii')
             print("Message received from the server: " + received_string)
             return received_string 
-        def make_socket_non_blocking(sock):
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            sock.setblocking(False)
-
-        make_socket_non_blocking(client_udp)
                 
-        def my_measurement_handler(data):
+        async def my_measurement_handler(data):
             global speed
             global video_time
             global t_start
@@ -77,6 +69,7 @@ async def run(address):
             global new_resistance
             global prev_resistance
             global resistance
+            global received_string
             eps = 1e-10
             speed = data[0]
             power = data[6]
@@ -87,10 +80,12 @@ async def run(address):
             message = f"{seq_num}:{speed}:{distance}"
             seq_num += 1
             t_start = time.time()
-            udp_send(client_udp, message, name)
+            #udp_send(client_udp, message, name)
+            #receiving_string = udp_receive(client_udp)
+            await asyncio.gather(udp_send(client_udp, message, name), udp_receive(client_udp))
             
-               #print(receiving_string)
-            resistance_time_str = 'N/A'
+            print(received_string)
+            client_type, id_name, seq_numOculus, resistance_time_str, video_time = received_string.split(":")
             if (resistance_time_str != 'N/A'):
                 resistance_time = int(resistance_time_str)            
             #print(weight)
@@ -113,7 +108,7 @@ async def run(address):
             print("res",resistance_time)    
             if resistance_time == 0:
                 new_power = 80
-                asyncio.ensure_future(ftms.set_target_power(80))
+                await asyncio.ensure_future(ftms.set_target_power(80))
 
                 print("target power", new_power)
             elif ((prev_resistance != resistance_time ) and (next_elevation != prev_elevation)):
@@ -128,21 +123,21 @@ async def run(address):
                     new_power = new_resistance*10 + 20
                 new_power = round(new_power, 2)
                 print("target power", new_power)
-                asyncio.ensure_future(ftms.set_target_power(new_power))
+                await asyncio.ensure_future(ftms.set_target_power(new_power))
                     #print(speed*(new_resistance))
                 
                 if new_power >= 0:
-                    asyncio.ensure_future(ftms.set_target_power(new_power))
+                    await asyncio.ensure_future(ftms.set_target_power(new_power))
                     #print(speed*(new_resistance))
                     
                 else:
                     new_power = 0
-                    asyncio.ensure_future(ftms.set_target_power(new_power))
+                    await asyncio.ensure_future(ftms.set_target_power(new_power))
                     #print(speed*(new_resistance))
                 
             else:
                 print("target power", new_power)
-                asyncio.ensure_future(ftms.set_target_power(new_power))
+                await asyncio.ensure_future(ftms.set_target_power(new_power))
                 #print(speed*(new_resistance))
                 
             
@@ -158,16 +153,16 @@ async def run(address):
             client_udp.connect((server_ip, server_port))
             #udp_client_createGame(client_udp)
             
-            udp_client_ready(client_udp,name)
+            await udp_client_ready(client_udp,name)
             
-            startMsg = udp_receive_ready(client_udp)
+            startMsg = await udp_receive(client_udp)
             print("this msg is", startMsg)
             #check if start message received
             if (startMsg == "Start"): 
                 global weight    
                 print("Start received")
                 ftms = FitnessMachineService(client)
-                ftms.set_indoor_bike_data_handler(my_measurement_handler)
+                await ftms.set_indoor_bike_data_handler(await my_measurement_handler)
                 #print("message is", message)
                 
                 await ftms.enable_indoor_bike_data_notify()
@@ -175,11 +170,8 @@ async def run(address):
                 await ftms.enable_control_point_indicate()
                 
                 await ftms.request_control()
-
                 print(weight)
-                await udp_receive(client_udp, server_ip, server_port) # this is the function need to develop
                 #prev_resistance = 0
-                #await udp_receive2(client_udp)
 
                 
                 #await ftms.set_target_power()
@@ -219,4 +211,3 @@ if __name__ == "__main__":
 
         # Wait for all tasks to be cancelled
         loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
-

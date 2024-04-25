@@ -1,16 +1,7 @@
-# Need the pycycling_edited library in the directory where this script is in.
-# before running the script below things have to be done.
-#
-# upgrade pip ---> pip install --upgrade pip
-# install bleak ---> pip install bleak
-# install pahe-mqtt ---> pip install paho-mqtt
-# install asyncio ---> pip install asyncio
-# upgrade bleak pycycling ---> pip install --upgrade bleak pycycling
-
-import paho.mqtt.client as mqtt
 import asyncio
 import time
 import socket
+import math
 from bleak import BleakClient
 from datetime import datetime
 from pycycling_edited.fitness_machine_service import FitnessMachineService
@@ -20,150 +11,163 @@ resistance = 0
 new_resistance = 0
 t_end = 0
 t_start = 0
-prev_resistance = 0
+prev_resistance = None
 total_time = 0
 count = 0
 seq_num = 1
+resistance_time = 0
+checkStart = True
+weight = 400
+new_power = 0
+next_elevation = 0
+prev_elevation = None
 
-resistance_time = None
-resistance_time = None
+avg_res = [0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -1.169, -1.169, -1.169, -1.169, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 0.577, 0.577, 0.577, 0.577, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, -1.169, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 1.413, 1.413, 1.413, 1.413, 1.413, 1.413, 2.221, 2.221, 2.221, 2.221, 2.221, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 2.221, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, -0.285, -0.285, -0.285, -0.285, -0.285, -0.285, -0.285, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577, 0.577]
 
-res_dic = {'1': 0.5 , '20': 5 , '52': 0.5 , '54': -4, '73': 1.4  , '84': -1.3 , '90': -5, '93': 3.3,
-           '104': -0.4, '109':-3.1, '113': 3.3, '137':-3.2,'142': 0.95, '145': -1.3, '149': -2.2,
-           '154':-3.1, '163':-4, '172': 3.4, '174': 0.5, '179':-4, '191':2.4, '196':0.5, '220':-3.2,
-           '227':1.4, '230':-0.4, '240':0.5, '252':-1.05, '258':0.95, '261':-1.05, '270':0.5,
-           '293':5, '317':0.5, '326':-3.55}
-
+print(len(avg_res))
 async def run(address):
     async with BleakClient(address) as client:
         speed_data = []
         client_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        server_ip = "65.0.98.83" # replace with server ip
+        server_ip = "65.0.76.120" # replace with server ip
         server_port = 5500
         client_udp.bind(('0.0.0.0', 5400))
-        name = "ndl"
-        
+        name = "p1"
 
-
-        #change on_message
-        '''def on_message(client, userdata, msg):
-            global resistance_time
-            global received_message_topic2
-            global t_end
-            if msg.topic == "VRcycling/UserA/IncTime":
-                resistance_time = msg.payload.decode()
-                #print("Time Duration for Increasing Resistance:", resistance_time)
-            elif msg.topic == "VRcycling/UserA/Delay":
-                received_message_topic2 = msg.payload.decode()
-                t_end = time.time()'''
         def udp_send(client_socket, message, id):
             send_bytes = f"R:{id}:{message}".encode('ascii')
+            print(f"R:{id}:{message}")
             client_socket.send(send_bytes)
 
         def udp_client_ready(client_socket,id):
             send_bytes = f"R:{id}:ready".encode('ascii')
             client_socket.send(send_bytes)
-
+        
         def udp_client_createGame(client_socket):
             send_bytes = f"create a game room".encode('ascii')
             client_socket.send(send_bytes)
 
+
         def udp_receive(client_socket):
-            print("waiting")
+            #print("waiting for message to receive")
             receive_bytes, _ = client_socket.recvfrom(1024)
             received_string = receive_bytes.decode('ascii')
-            #print("Message received from the server: " + received_string)
+            print("Message received from the server: " + received_string)
             return received_string 
                 
         def my_measurement_handler(data):
             global speed
-            global resistance
+            global video_time
             global t_start
             global message
             global resistance_time
             global client_type
             global id_name
             global seq_num
-
+            global seq_numOculus
+            global checkStart
+            global new_resistance
+            global prev_resistance
+            global resistance
             eps = 1e-10
             speed = data[0]
             power = data[6]
             distance = data[4]
             resistance = power/(speed + eps)
-            #print(datetime.now(), "Speed:", data[0], "Distance:", data[4], "Power:", data[6], "Resistance:", resistance)
-            #print("Time when speed data came:", t_start, 'speed =', speed)
-            #client_mqtt.publish("VRcycling/UserA/Speed", str(data[0])) #publish
-            #client_mqtt.publish("VRcycling/UserA/Distance", str(data[4])) #publish
-
+            checkStart = True
+            
             message = f"{seq_num}:{speed}:{distance}"
             seq_num += 1
             t_start = time.time()
             udp_send(client_udp, message, name)
             receiving_string = udp_receive(client_udp)
-            print(receiving_string)
-            data_packet = receiving_string.split(":")
-            client_type = data_packet[0]
-            id_name = data_packet[1]
-            resistance_time = data_packet[2]        
-                     
+            
+            #print(receiving_string)
+            client_type, id_name, seq_numOculus, resistance_time_str, video_time = receiving_string.split(":")
+            resistance_time = int(resistance_time_str)            
+            #print(weight)
+            global new_power
+            global new_resistance
+            global prev_resistance
+            global next_elevation
+            global prev_elevation
+            next_elevation = avg_res[resistance_time]
 
-            '''client_mqtt.subscribe("VRcycling/UserA/IncTime") #subscribe
-            client_mqtt.subscribe("VRcycling/UserA/Delay") #subscribe
-            # Set the callback function for when a message is received
-            client_mqtt.on_message = on_message'''
+            new_resistance = resistance +  next_elevation # weight*(math.sin(3*avg_res[resistance_time])+0.4*math.cos(3*avg_res[resistance_time]))# mg[sinx]
+            print("resistance", resistance, "and new resistance" , new_resistance , )
+            print("pre res", prev_resistance, "and res time", resistance_time)
+            print("pre elevation", prev_elevation, "and next elevation", next_elevation)
+            print("instantaneous power", power)
+            #new_resistance = 0 #change
+            
+                    
+            print("res",resistance_time)    
+
+            '''if resistance_time == 0:
+                asyncio.ensure_future(ftms.set_target_power(30))
+                
+                print()
+            elif ((prev_resistance != resistance_time ) and (next_elevation != prev_elevation)):
+                print("next elevation", next_elevation)
+
+                prev_elevation = next_elevation
+                prev_resistance = resistance_time 
+
+                new_power = new_resistance*speed
+                new_power = round(new_power, 2)
+                print("target power", new_power)
+                asyncio.ensure_future(ftms.set_target_power(new_power))
+                    #print(speed*(new_resistance))
+                
+                if new_power >= 0:
+                    asyncio.ensure_future(ftms.set_target_power(new_power))
+                    #print(speed*(new_resistance))
+                    
+                else:
+                    new_power = 0
+                    asyncio.ensure_future(ftms.set_target_power(new_power))
+                    #print(speed*(new_resistance))
+                
+            else:
+                asyncio.ensure_future(ftms.set_target_power(new_power))
+                #print(speed*(new_resistance))'''
+                
             
         def print_control_point_response(message):
             #print("Received control point response:")
             #print(message)
             print()
-
         try:
 
             await client.is_connected()
 
 
             client_udp.connect((server_ip, server_port))
-            ftms = FitnessMachineService(client)
-            ftms.set_indoor_bike_data_handler(my_measurement_handler)
-            #print("message is", message)
-            udp_client_createGame(client_udp)
+            #udp_client_createGame(client_udp)
+            
             udp_client_ready(client_udp,name)
-            udp_receive(client_udp)
-            await ftms.enable_indoor_bike_data_notify()
-            ftms.set_control_point_response_handler(print_control_point_response)
-            await ftms.enable_control_point_indicate()
             
-            await ftms.request_control()
-            
-            prev_resistance = 0
-            for i in range(10):
-                speed_data.append(['start', t_start, speed])
-                #print(resistance_time)
-                new_resistance = 0 #change
-                if ((resistance_time in res_dic.keys()) and (prev_resistance != resistance_time)):
-                    prev_resistance = resistance_time
-                    new_resistance = res_dic[resistance_time] + resistance
-                    #print(new_resistance)
-                    if new_resistance >= 0:
-                        await ftms.set_target_power(speed*(new_resistance))
-                        #print(speed*(new_resistance))
-                        await asyncio.sleep(1)
-                    else:
-                        new_resistance = 0
-                        await ftms.set_target_power(speed*(new_resistance))
-                        #print(speed*(new_resistance))
-                        await asyncio.sleep(1)
+            startMsg = udp_receive(client_udp)
+            print("this msg is", startMsg)
+            #check if start message received
+            if (startMsg == "Start"): 
+                global weight    
+                print("Start received")
+                ftms = FitnessMachineService(client)
+                ftms.set_indoor_bike_data_handler(my_measurement_handler)
+                #print("message is", message)
+                
+                await ftms.enable_indoor_bike_data_notify()
+                ftms.set_control_point_response_handler(print_control_point_response)
+                await ftms.enable_control_point_indicate()
+                
+                await ftms.request_control()
+                print(weight)
+                #prev_resistance = 0
 
-                elif resistance_time == None:
-                    await ftms.set_target_power(0)
-                    await asyncio.sleep(1)
-                else:
-                    await ftms.set_target_power(speed*(new_resistance))
-                    #print(speed*(new_resistance))
-                    await asyncio.sleep(1)
-            
-            await ftms.set_target_power(0)
-            await asyncio.sleep(5)
+                
+                await ftms.set_target_power(0)
+                await asyncio.sleep(1000)
             
         except asyncio.CancelledError:
             print("CancelledError received. Disconnecting...")
@@ -185,6 +189,7 @@ if __name__ == "__main__":
     os.environ["PYTHONASYNCIODEBUG"] = str(1)
     #device_address = "D8:87:6C:82:51:0D"
     device_address = "D5:6A:1A:46:93:4B"
+    #device_address = "D8:ED:35:29:B4:C6" 
     
     loop = asyncio.get_event_loop()
     try:
