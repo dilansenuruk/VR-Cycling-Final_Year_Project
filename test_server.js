@@ -21,6 +21,8 @@ server.on('listening', () => {
     
 });
 
+
+
 server.on('message', (message, senderInfo) => {
     const messageString = message.toString();
     console.log(messageString)
@@ -29,11 +31,22 @@ server.on('message', (message, senderInfo) => {
 
     if(messageString.startsWith('no_players')){
         noOfPlayers = messageString;
+        
+        //broadcast(messageString);
     }
     
     else if (messageString === 'create a game room') {
         clientsOculus.length = 0;
         clientsRasp.length = 0;
+        // setTimeout(() => {
+        //     clientsOculus.length = 0;
+        //     clientsRasp.length = 0;
+                
+            
+            
+        // }, 2000);
+        // clear the arrays clientsOculus and clientRasp
+
         
         
         setTimeout(() => {
@@ -68,11 +81,17 @@ server.on('message', (message, senderInfo) => {
                     port: senderInfo.port
                 });
     
+                //console.log("Updated clients array:", clientsOculus);
                 console.log(`Oculus Client at ${senderInfo.address}:${senderInfo.port} is ready.`);
-            
+                
+                // Send an acknowledgment back to the client
+                // server.send('ack', senderInfo.port, senderInfo.address, () => {
+                //     console.log(`Acknowledgment sent to oculus ${senderInfo.address}:${senderInfo.port}`);
+                // });
+                
             } else {
                 console.log(`Oculus Client at ${senderInfo.address}:${senderInfo.port} is already in the list.`);
-                
+                //server.send('ha ha', senderInfo.port, senderInfo.address)
             }
         }
         
@@ -139,6 +158,9 @@ server.on('message', (message, senderInfo) => {
             }
             else if (messageType === 'R'){
                 //send message to the client with same playerName but messageType is "O"
+                //console.log("broadcasting")
+                //broadcast(message)
+                // need to change
                 const matchingOculusClient = clientsOculus.find(client => client.playerName === playerName);
                 if (matchingOculusClient) {
                     // Send the message to the matching Oculus client
