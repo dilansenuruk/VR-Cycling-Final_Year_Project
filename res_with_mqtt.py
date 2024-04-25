@@ -1,29 +1,35 @@
 import asyncio
 import time
 import socket
+import math
 from bleak import BleakClient
 from datetime import datetime
 from pycycling_edited.fitness_machine_service import FitnessMachineService
+import paho.mqtt.client as mqtt
 
+
+broker_address = "test.mosquitto.org" #external broker
+client_mqtt = mqtt.Client("10.10.14.3") #create new instance
+client_mqtt.connect(broker_address) #connect to broker
 speed = 0
 resistance = 0
 new_resistance = 0
 t_end = 0
 t_start = 0
-prev_resistance = 0
+prev_resistance = None
 total_time = 0
 count = 0
 seq_num = 1
-resistance_time = None
+resistance_time = 0
 checkStart = True
-i = None
+weight = 400
+new_power = 0
+next_elevation = 0
+prev_elevation = None
+received_message_topic1 ="0"
 
-res_dic = {'1': 0.5 , '20': 5 , '52': 0.5 , '54': -4, '73': 1.4  , '84': -1.3 , '90': -5, '93': 3.3,
-           '104': -0.4, '109':-3.1, '113': 3.3, '137':-3.2,'142': 0.95, '145': -1.3, '149': -2.2,
-           '154':-3.1, '163':-4, '172': 3.4, '174': 0.5, '179':-4, '191':2.4, '196':0.5, '220':-3.2,
-           '227':1.4, '230':-0.4, '240':0.5, '252':-1.05, '258':0.95, '261':-1.05, '270':0.5,
-           '293':5, '317':0.5, '326':-3.55}
-
+avg_res = {8: 0.577, 17: -2.338, 41: -6.0, 61: -2.338,  65: 0.2885, 76: 1.1105, 87: 0.2885, 91: -2.338, 107: 0.2885, 175: 1.1105, 181: 1.1105, 186: 0.2885, 200: 1.1105, 233: 1.5, 259: 0.2885, 291: -0.57,298:0.2885}
+print(len(avg_res))
 async def run(address):
     async with BleakClient(address) as client:
         speed_data = []
@@ -31,19 +37,13 @@ async def run(address):
         server_ip = "65.0.76.120" # replace with server ip
         server_port = 5500
         client_udp.bind(('0.0.0.0', 5400))
-        name = "p1"
-   
-       #change on_message
-        '''def on_message(client, userdata, msg):
-            global resistance_time
-            global received_message_topic2
-            global t_end
-            if msg.topic == "VRcycling/UserA/IncTime":
-                resistance_time = msg.payload.decode()
-                #print("Time Duration for Increasing Resistance:", resistance_time)
-            elif msg.topic == "VRcycling/UserA/Delay":
-                received_me                                                      bb  -11ssage_topic2 = msg.payload.decode()
-                t_end = time.time()'''
+        name = "Pasindu"
+
+        def on_message(client, userdata, msg):
+            global received_message_topic1
+            if msg.topic == "VRcycling/restime":
+                received_message_topic1 = msg.payload.decode()
+                print("Time Duration for Increasing Resistance:", received_message_topic1)
         def udp_send(client_socket, message, id):
             send_bytes = f"R:{id}:{message}".encode('ascii')
             print(f"R:{id}:{message}")
@@ -85,26 +85,73 @@ async def run(address):
             distance = data[4]
             resistance = power/(speed + eps)
             checkStart = True
-            
-            #print(datetime.now(), "Speed:", data[0], "Distance:", data[4], "Power:", data[6], "Resistance:", resistance)
-            #print("Time when speed data came:", t_start, 'speed =', speed)
-            #client_mqtt.publish("VRcycling/UserA/Speed", str(data[0])) #publish
-            #client_mqtt.publish("VRcycling/UserA/Distance", str(data[4])) #publish
-
+            print("speed", speed)
+            print("power", power)
             message = f"{seq_num}:{speed}:{distance}"
             seq_num += 1
             t_start = time.time()
             udp_send(client_udp, message, name)
-            receiving_string = udp_receive(client_udp)
-            #print(receiving_string)
-            client_type, id_name, seq_numOculus, resistance_time, video_time = receiving_string.split(":")
-        
-                     
-
-            '''client_mqtt.subscribe("VRcycling/UserA/IncTime") #subscribe
-            client_mqtt.subscribe("VRcycling/UserA/Delay") #subscribe
+            #receiving_string = udp_receive(client_udp)
+            client_mqtt.subscribe("VRcycling/restime") #subscribe
             # Set the callback function for when a message is received
-            client_mqtt.on_message = on_message'''
+            client_mqtt.on_message = on_message
+            #print(receiving_string)
+            resistance_time_str= received_message_topic1
+            if (resistance_time_str != 'N/A'):
+                resistance_time = int(resistance_time_str)            
+            #print(weight)
+            global new_power
+            global new_resistance
+            global prev_resistance
+            global next_elevation
+            global prev_elevation
+
+            if resistance_time in avg_res.keys():
+                next_elevation = avg_res[resistance_time]
+
+            new_resistance = resistance +  next_elevation # weight*(math.sin(3*avg_res[resistance_time])+0.4*math.cos(3*avg_res[resistance_time]))# mg[sinx]
+            print("resistance", resistance, "and new resistance" , new_resistance , )
+            print("pre res", prev_resistance, "and res time", resistance_time)
+            print("pre elevation", prev_elevation, "and next elevation", next_elevation)
+            #new_resistance = 0 #change
+            
+                    
+            print("res",resistance_time)    
+            if resistance_time == 0:
+                new_power = 80
+                asyncio.ensure_future(ftms.set_target_power(80))
+
+                print("target power", new_power)
+            elif ((prev_resistance != resistance_time ) and (next_elevation != prev_elevation)):
+                print("next elevation", next_elevation)
+
+                prev_elevation = next_elevation
+                prev_resistance = resistance_time 
+
+                new_power = new_resistance*10 + 20
+                '''if (next_elevation>0):
+                    new_power = new_resistance*5 + 20
+                else: 
+                    new_power = new_resistance*10 + 20'''
+                new_power = round(new_power, 2)
+                print("target power", new_power)
+                asyncio.ensure_future(ftms.set_target_power(new_power))
+                    #print(speed*(new_resistance))
+                
+                if new_power >= 0:
+                    asyncio.ensure_future(ftms.set_target_power(new_power))
+                    #print(speed*(new_resistance))
+                    
+                else:
+                    new_power = 0
+                    asyncio.ensure_future(ftms.set_target_power(new_power))
+                    #print(speed*(new_resistance))
+                
+            else:
+                print("target power", new_power)
+                asyncio.ensure_future(ftms.set_target_power(new_power))
+                #print(speed*(new_resistance))
+                
             
         def print_control_point_response(message):
             #print("Received control point response:")
@@ -124,51 +171,23 @@ async def run(address):
             print("this msg is", startMsg)
             #check if start message received
             if (startMsg == "Start"): 
-                global i    
+                global weight    
                 print("Start received")
                 ftms = FitnessMachineService(client)
                 ftms.set_indoor_bike_data_handler(my_measurement_handler)
                 #print("message is", message)
                 
                 await ftms.enable_indoor_bike_data_notify()
-                print(i)
                 ftms.set_control_point_response_handler(print_control_point_response)
                 await ftms.enable_control_point_indicate()
                 
                 await ftms.request_control()
-                
+                print(weight)
                 #prev_resistance = 0
-                for i in range(3000):
-                    print("in loop")
-                    global new_resistance
-                    global prev_resistance
-                    speed_data.append(['start', t_start, speed])
-                    #print(resistance_time)
-                    #new_resistance = 0 #change
-                    if ((resistance_time in res_dic.keys()) and (prev_resistance != resistance_time)):
-                        prev_resistance = resistance_time
-                        new_resistance = res_dic[resistance_time] + resistance
-                        #print(new_resistance)
-                        if new_resistance >= 0:
-                            await ftms.set_target_power(speed*(new_resistance))
-                            #print(speed*(new_resistance))
-                            await asyncio.sleep(1)
-                        else:
-                            new_resistance = 0
-                            await ftms.set_target_power(speed*(new_resistance))
-                            #print(speed*(new_resistance))
-                            await asyncio.sleep(1)
 
-                    elif resistance_time == None:
-                        await ftms.set_target_power(0)
-                        await asyncio.sleep(1)
-                    else:
-                        await ftms.set_target_power(speed*(new_resistance))
-                        #print(speed*(new_resistance))
-                        await asyncio.sleep(1)
                 
-                await ftms.set_target_power(0)
-                await asyncio.sleep(5)
+                #await ftms.set_target_power()
+                await asyncio.sleep(1000)
             
         except asyncio.CancelledError:
             print("CancelledError received. Disconnecting...")
@@ -189,9 +208,9 @@ if __name__ == "__main__":
     
     os.environ["PYTHONASYNCIODEBUG"] = str(1)
     #device_address = "D8:87:6C:82:51:0D"
-    #device_address = "D5:6A:1A:46:93:4B"
-    device_address = "D8:ED:35:29:B4:C6" 
-    
+    device_address = "D5:6A:1A:46:93:4B"
+    #device_address = "D8:ED:35:29:B4:C6" 
+    client_mqtt.loop_start()
     loop = asyncio.get_event_loop()
     try:
         loop.run_until_complete(run(device_address))
@@ -204,4 +223,7 @@ if __name__ == "__main__":
 
         # Wait for all tasks to be cancelled
         loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
+        client_mqtt.disconnect()
+        client_mqtt.loop_stop()
+    
 

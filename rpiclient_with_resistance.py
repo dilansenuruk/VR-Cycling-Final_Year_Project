@@ -54,6 +54,11 @@ async def run(address):
             received_string = receive_bytes.decode('ascii')
             print("Message received from the server: " + received_string)
             return received_string 
+        def make_socket_non_blocking(sock):
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            sock.setblocking(False)
+
+        make_socket_non_blocking(client_udp)
                 
         def my_measurement_handler(data):
             global speed
@@ -75,7 +80,7 @@ async def run(address):
             distance = data[4]
             resistance = power/(speed + eps)
             checkStart = True
-            
+            print("speed", speed)
             message = f"{seq_num}:{speed}:{distance}"
             seq_num += 1
             t_start = time.time()
@@ -97,15 +102,13 @@ async def run(address):
             print("resistance", resistance, "and new resistance" , new_resistance , )
             print("pre res", prev_resistance, "and res time", resistance_time)
             print("pre elevation", prev_elevation, "and next elevation", next_elevation)
-            print("instantaneous power", power)
             #new_resistance = 0 #change
             
                     
             print("res",resistance_time)    
+            if resistance_time == 0:
+                asyncio.ensure_future(ftms.set_target_power(80))
 
-            '''if resistance_time == 0:
-                asyncio.ensure_future(ftms.set_target_power(30))
-                
                 print()
             elif ((prev_resistance != resistance_time ) and (next_elevation != prev_elevation)):
                 print("next elevation", next_elevation)
@@ -113,7 +116,7 @@ async def run(address):
                 prev_elevation = next_elevation
                 prev_resistance = resistance_time 
 
-                new_power = new_resistance*speed
+                new_power = new_resistance*10 +20
                 new_power = round(new_power, 2)
                 print("target power", new_power)
                 asyncio.ensure_future(ftms.set_target_power(new_power))
@@ -130,7 +133,7 @@ async def run(address):
                 
             else:
                 asyncio.ensure_future(ftms.set_target_power(new_power))
-                #print(speed*(new_resistance))'''
+                #print(speed*(new_resistance))
                 
             
         def print_control_point_response(message):
@@ -166,7 +169,7 @@ async def run(address):
                 #prev_resistance = 0
 
                 
-                await ftms.set_target_power(0)
+                #await ftms.set_target_power()
                 await asyncio.sleep(1000)
             
         except asyncio.CancelledError:

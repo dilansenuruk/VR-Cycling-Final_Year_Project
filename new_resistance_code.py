@@ -1,6 +1,7 @@
 import asyncio
 import time
 import socket
+import math
 from bleak import BleakClient
 from datetime import datetime
 from pycycling_edited.fitness_machine_service import FitnessMachineService
@@ -16,13 +17,33 @@ count = 0
 seq_num = 1
 resistance_time = None
 checkStart = True
-i = None
+weight = 800
+new_power = 0
 
-res_dic = {'1': 0.5 , '20': 5 , '52': 0.5 , '54': -4, '73': 1.4  , '84': -1.3 , '90': -5, '93': 3.3,
-           '104': -0.4, '109':-3.1, '113': 3.3, '137':-3.2,'142': 0.95, '145': -1.3, '149': -2.2,
-           '154':-3.1, '163':-4, '172': 3.4, '174': 0.5, '179':-4, '191':2.4, '196':0.5, '220':-3.2,
-           '227':1.4, '230':-0.4, '240':0.5, '252':-1.05, '258':0.95, '261':-1.05, '270':0.5,
-           '293':5, '317':0.5, '326':-3.55}
+
+avg_res = [-0.01, 0.0, 0.0, 0.0, -0.01, -0.01, 0.0, 0.0, -0.01, -0.01, -0.02, 0.09, 0.08, 0.01, 0.0, 
+        0.04, -0.05, -0.01, -0.08, 0.13, 0.1, -0.07, -0.02, 0.0, -0.07, -0.07, -0.08, -0.06, -0.04,
+        -0.12, -0.05, -0.08, -0.11, -0.08, -0.05, -0.06, -0.02, 0.11, 0.06, -0.1, -0.14, -0.2, 
+        -0.18, -0.06, -0.03, -0.07, -0.07, -0.11, -0.12, -0.16, -0.21, -0.19, -0.09, -0.11, -0.16,
+        -0.13, -0.25, -0.18, -0.24, -0.38, -0.38, -0.09, -0.07, -0.18, -0.15, -0.03, -0.25, -0.09,
+        -0.1, -0.04, 0.05, 0.0, 0.13, -0.02, -0.03, 0.03, 0.0, 0.13, 0.12, 0.09, 0.06, 0.02, 0.12, 
+        0.07, 0.11, 0.1, 0.26, 0.18, 0.22, 0.02, 0.02, 0.06, 0.02, -0.02, -0.04, -0.04, -0.1, -0.09,
+        -0.05, -0.04, -0.09, -0.07, -0.16, 0.02, -0.06, -0.19, -0.12, -0.01, -0.02, -0.02, -0.02, 0.03,
+        0.08, -0.01, 0.06, -0.05, 0.01, 0.0, 0.01, -0.03, -0.07, 0.06, -0.03, 0.0, -0.1, 0.02, -0.04, 
+        -0.01, -0.01, -0.03, 0.03, -0.03, -0.15, -0.04, 0.04, -0.05, -0.01, 0.05, -0.1, -0.02, 0.06, 
+        0.27, -0.07, -0.01, -0.04, -0.01, 0.03, 0.03, 0.15, 0.06, 0.04, 0.02, 0.01, 0.03, -0.03, 0.06, 
+        0.03, 0.04, 0.07, 0.15, -0.06, 0.0, 0.13, 0.09, 0.02, -0.07, -0.03, 0.01, -0.04, -0.04, -0.08, 
+        -0.18, 0.1, -0.06, 0.13, 0.03, 0.02, -0.01, 0.01, 0.04, -0.01, 0.08, 0.01, 0.1, 0.17, 0.0, 0.02, 
+        -0.05, -0.02, -0.03, 0.03, -0.02, 0.04, 0.01, -0.03, -0.03, 0.03, -0.15, -0.06, 0.02, 0.14, -0.04, 
+        0.02, 0.1, 0.04, 0.06, 0.06, 0.03, -0.01, 0.05, 0.1, 0.08, 0.06, 0.08, 0.04, 0.02, 0.09, 0.07, 0.11, 
+        0.05, 0.07, 0.01, 0.0, 0.12, 0.01, 0.04, 0.03, 0.08, 0.08, 0.1, 0.09, 0.05, 0.07, 0.16, 0.13, 0.14, 
+        0.12, 0.07, 0.13, 0.1, 0.04, 0.13, 0.12, 0.09, 0.07, 0.14, 0.13, 0.11, 0.11, 0.1, 0.1, 0.11, 0.13, 
+        0.07, 0.11, 0.04, 0.06, 0.1, 0.07, 0.0, 0.16, -0.02, 0.02, 0.04, 0.01, 0.01, 0.04, 0.01, 0.0, 0.05, 
+        0.06, 0.0, 0.0, 0.0, 0.02, 0.03, -0.03, 0.0, 0.02, -0.01, -0.01, 0.01, -0.01, -0.01, 0.0, 0.1, -0.02, 
+        -0.07, -0.1, -0.01, -0.01, -0.05, -0.06, -0.04, -0.04, 0.01, -0.02, -0.02, 0.0, 0.02, 0.05, -0.07, 0.02, 
+        0.0, 0.0, 0.12, 0.02, 0.05, 0.03, 0.05, 0.0, 0.09, 0.05, 0.12, 0.09, 0.09, 0.1, 0.09, 0.03, 0.1, 0.01, 0.01]
+
+
 
 async def run(address):
     async with BleakClient(address) as client:
@@ -42,7 +63,7 @@ async def run(address):
                 resistance_time = msg.payload.decode()
                 #print("Time Duration for Increasing Resistance:", resistance_time)
             elif msg.topic == "VRcycling/UserA/Delay":
-                received_me                                                      bb  -11ssage_topic2 = msg.payload.decode()
+                received_message_topic2 = msg.payload.decode()
                 t_end = time.time()'''
         def udp_send(client_socket, message, id):
             send_bytes = f"R:{id}:{message}".encode('ascii')
@@ -96,9 +117,10 @@ async def run(address):
             t_start = time.time()
             udp_send(client_udp, message, name)
             receiving_string = udp_receive(client_udp)
+            
             #print(receiving_string)
-            client_type, id_name, seq_numOculus, resistance_time, video_time = receiving_string.split(":")
-        
+            client_type, id_name, seq_numOculus, resistance_time_str, video_time = receiving_string.split(":")
+            resistance_time = int(resistance_time_str)
                      
 
             '''client_mqtt.subscribe("VRcycling/UserA/IncTime") #subscribe
@@ -124,46 +146,52 @@ async def run(address):
             print("this msg is", startMsg)
             #check if start message received
             if (startMsg == "Start"): 
-                global i    
+                global weight    
                 print("Start received")
                 ftms = FitnessMachineService(client)
                 ftms.set_indoor_bike_data_handler(my_measurement_handler)
                 #print("message is", message)
                 
                 await ftms.enable_indoor_bike_data_notify()
-                print(i)
                 ftms.set_control_point_response_handler(print_control_point_response)
                 await ftms.enable_control_point_indicate()
                 
                 await ftms.request_control()
-                
+                print(weight)
                 #prev_resistance = 0
                 for i in range(3000):
-                    print("in loop")
+                    #global weight
+                    await asyncio.sleep(1)
+                    print("wei", weight)
+                    global new_power
                     global new_resistance
                     global prev_resistance
-                    speed_data.append(['start', t_start, speed])
-                    #print(resistance_time)
+                    new_resistance = avg_res[resistance_time] # mg[sinx]
+                    print("in_1")
                     #new_resistance = 0 #change
-                    if ((resistance_time in res_dic.keys()) and (prev_resistance != resistance_time)):
-                        prev_resistance = resistance_time
-                        new_resistance = res_dic[resistance_time] + resistance
-                        #print(new_resistance)
-                        if new_resistance >= 0:
-                            await ftms.set_target_power(speed*(new_resistance))
+                    if (resistance_time):
+                        print("in_2")
+                        prev_resistance = new_resistance
+                        new_power = weight*(math.sin(new_resistance)+0.6*math.cos(new_resistance))*speed
+                        print("target power", new_power)
+                        await ftms.set_target_power(new_power)
+                            #print(speed*(new_resistance))
+                        await asyncio.sleep(1)
+                        if new_power >= 0:
+                            await ftms.set_target_power(new_power)
                             #print(speed*(new_resistance))
                             await asyncio.sleep(1)
                         else:
-                            new_resistance = 0
-                            await ftms.set_target_power(speed*(new_resistance))
+                            new_power = 0
+                            await ftms.set_target_power(new_power)
                             #print(speed*(new_resistance))
                             await asyncio.sleep(1)
-
+                        
                     elif resistance_time == None:
                         await ftms.set_target_power(0)
                         await asyncio.sleep(1)
                     else:
-                        await ftms.set_target_power(speed*(new_resistance))
+                        await ftms.set_target_power(new_power)
                         #print(speed*(new_resistance))
                         await asyncio.sleep(1)
                 
