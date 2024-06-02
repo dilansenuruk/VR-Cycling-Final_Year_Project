@@ -2,7 +2,7 @@ import asyncio
 import socket
 
 async def udp_send(client_socket, i):
-    send_bytes = f"ndl:{i}:msg:o".encode('ascii')
+    send_bytes = f"Pasi:{i}:msg:o".encode('ascii')
     client_socket.send(send_bytes)
 
 async def udp_receive(client_socket, client_id, received_counts, received_sequence_numbers):
@@ -31,10 +31,10 @@ async def udp_client_ready(client_socket):
 
 async def main():
     client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server_ip = "65.0.76.120"
+    server_ip = "15.206.74.115"
     server_port = 5500
     client.bind(('0.0.0.0', 5400))
-    client_id = "dam"
+    client_id = "Pasi"
     number_of_messages = 5000
     received_counts = {}  # Dictionary to store received message counts for each client
     received_sequence_numbers = {}

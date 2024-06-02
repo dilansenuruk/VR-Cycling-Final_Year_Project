@@ -3,7 +3,7 @@ import socket
 import time
 
 async def udp_send(client_socket, i, timestamps):
-    send_bytes = f"dam:{i}:msg:o".encode('ascii')
+    send_bytes = f"Pasi:{i}:msg:o".encode('ascii')
     client_socket.send(send_bytes)
     timestamps[i] = time.time()
     #print(timestamps)
@@ -76,11 +76,11 @@ async def udp_client_ready(client_socket):
 async def main():
     global client
     client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server_ip = "3.109.133.185"
+    server_ip = "15.206.74.115"
     server_port = 5500
-    client.bind(('0.0.0.0', 5600))
-    client_id = "dam"
-    number_of_messages = 2000
+    client.bind(('0.0.0.0', 5400))
+    client_id = "Pasi"
+    number_of_messages = 5000
     received_counts = {}  # Dictionary to store received message counts for each client
     return_counts = {}   # Dictionary to store returning message counts for each client
     received_sequence_numbers = set(range(1, number_of_messages + 1))
