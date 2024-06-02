@@ -1,7 +1,6 @@
 import asyncio
 import socket
-import time
-global received_string
+
 async def udp_send(client_socket, message,i):
     
     send_bytes = f"ndl:{i}:{message}:o".encode('ascii')
@@ -15,8 +14,7 @@ async def udp_receive(client_socket):
     receive_bytes, _ = client_socket.recvfrom(1024)
     received_string = receive_bytes.decode('ascii')
     print("Message received from the server\n" + received_string)
-    #return received_string
-    _=udp_receive(client_socket)
+    return received_string
 
 async def udp_disconnect(client_socket):
     send_bytes = "disconnect".encode('ascii')
@@ -37,29 +35,28 @@ async def udp_test():
     try:
         client.connect((server_ip, server_port))
         await udp_client_ready(client)
-        _=await udp_receive(client)
-        number_of_messages = 1000
+
+        number_of_messages = 100
         sent_sequence_numbers = set(range(1, number_of_messages + 1))
         received_sequence_numbers = set()
 
         for i in range(1, number_of_messages + 1):
             message = f"message{i}"
-            time.sleep(0.5)
             await udp_send(client,message,i)
        
             received_string = await udp_receive(client)
-            #received_sequence_numbers.add(int(received_string.split(":")[1]))
+            received_sequence_numbers.add(int(received_string.split(":")[1]))
 
-        # lost_packets = sent_sequence_numbers - received_sequence_numbers
-        # if lost_packets:
-        #     print(f"Lost packets: {lost_packets}")
-        #     for lost_packet in lost_packets:
-        #         print(f"Message {lost_packet} has been lost.")
-        # else:
-        #     print("No packets lost.")
+        lost_packets = sent_sequence_numbers - received_sequence_numbers
+        if lost_packets:
+            print(f"Lost packets: {lost_packets}")
+            for lost_packet in lost_packets:
+                print(f"Message {lost_packet} has been lost.")
+        else:
+            print("No packets lost.")
 
-        # while check:
-        #     received_string = await udp_receive(client)
+        while check:
+            received_string = await udp_receive(client)
         
 
     except KeyboardInterrupt:

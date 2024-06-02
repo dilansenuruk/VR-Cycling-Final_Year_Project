@@ -1,0 +1,110 @@
+import asyncio
+import socket
+import time
+import threading  # Import threading module for running scapy in a separate thread
+from scapy.all import *
+
+async def udp_send(client_socket, i, timestamps):
+    send_bytes = f"ndl:{i}:msg:o".encode('ascii')
+    client_socket.send(send_bytes)
+    timestamps[i] = time.time()
+
+async def udp_receive(client_socket, client_id, received_counts, received_sequence_numbers, timestamps, delays):
+    global rec_own
+    receive_bytes, _ = client_socket.recvfrom(1024)
+    received_string = receive_bytes.decode('ascii')
+    
+    print("Message received from the server\n" + received_string)
+    if received_string != "ready" and received_string != "ack":
+        parts = received_string.split(":")
+        rec_client_id, rec_seq_num, rec_message, rec_message_type = parts[0], int(parts[1]), parts[2], parts[3]
+        
+        if rec_client_id == client_id:
+            received_counts[rec_client_id] = received_counts.get(rec_client_id, 0) + 1
+            rec_own += 1
+            
+            sent_time = timestamps.get(rec_seq_num, 0)
+            if sent_time != 0:
+                delay = time.time() - sent_time
+                print(f"Delay in receiving own message {rec_seq_num}: {delay} seconds")
+                delays.append(delay)
+        else:
+            received_counts[rec_client_id] = received_counts.get(rec_client_id, 0) + 1
+
+async def udp_client_ready(client_socket):
+    send_bytes = "ready".encode('ascii')
+    client_socket.send(send_bytes)
+
+def run_sniffer():
+    from scapy.layers.inet import ICMP, IP  # Import ICMP here
+    def respond_to_ping(pkt):
+        if ICMP in pkt and pkt[ICMP].type == 8:  # Check if it's an ICMP echo request (type 8)
+            print(f"Received ICMP Echo Request from {pkt[IP].src}")
+            
+            # Create ICMP echo reply packet
+            reply = IP(src=pkt[IP].dst, dst=pkt[IP].src) / ICMP(type=0, id=pkt[ICMP].id) / pkt[Raw].load
+            
+            # Send the reply packet
+            send(reply)
+            print("Sent ICMP Echo Reply")
+    
+    # Sniff ICMP packets and respond to echo requests
+    sniff(filter="icmp", prn=respond_to_ping)
+
+async def main():
+    client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    server_ip = "43.205.235.78"
+    server_port = 5500
+    client.bind(('0.0.0.0', 5400))
+    client_id = "ndl"
+    number_of_messages = 100
+    received_counts = {}  # Dictionary to store received message counts for each client
+    received_sequence_numbers = set(range(1, number_of_messages + 1))
+    global rec_own
+    rec_own = 0
+    timestamps = {}
+    delays = []
+    check = True
+    
+    try:
+        client.connect((server_ip, server_port))
+        print("connected to the server")
+    except KeyboardInterrupt:
+        print("KeyboardInterrupt received. Disconnecting...")
+    except Exception as e:
+        print("Exception thrown: ", str(e))
+
+    await udp_client_ready(client)
+    
+    for i in range(1, number_of_messages + 1):
+        await asyncio.gather(udp_send(client, i, timestamps), udp_receive(client, client_id, received_counts, received_sequence_numbers, timestamps, delays))  
+        await asyncio.sleep(0.1)
+    
+    # Check for lost packets for each client
+    while check:
+        if rec_own == number_of_messages:
+            check = False
+            for client_id, count in received_counts.items():
+                print(received_counts)
+                expected_sequence_numbers = set(range(1, number_of_messages + 1))
+                lost_packets = expected_sequence_numbers - received_sequence_numbers
+                if lost_packets:
+                    print(f"Client {client_id} lost packets: {lost_packets}")
+                    for lost_packet in lost_packets:
+                        print(f"Message {lost_packet} from client {client_id} has been lost.")
+                else:
+                    print(f"Client {client_id}: No packets lost.")
+        else:
+            await udp_receive(client, client_id, received_counts, received_sequence_numbers, timestamps, delays)
+    
+    if delays:
+        average_delay = (sum(delays) / len(delays))*1000
+        print(f"Average delay in receiving own messages: {average_delay} milliseconds")
+
+if __name__ == "__main__":
+    # Start the scapy sniffer in a separate thread
+    scapy_thread = threading.Thread(target=run_sniffer)
+    scapy_thread.start()
+    
+    # Run the asyncio event loop
+    asyncio.run(main())
